@@ -366,18 +366,22 @@ body > .side div.options.text button {
 }
 
 #chat {
+  position: relative;
   display: none;
   grid-area: 2/4;
-  grid-template-rows: auto 65px;
-  grid-template-columns: auto;
   border: 2px solid rgb(38.8, 37.88, 38.8);
   border-radius: 13px;
 }
 #chat .body {
-  grid-area: 1/1;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(100% - 65px);
   display: flex;
   flex-direction: column;
   padding-top: 65px;
+  overflow: hidden auto;
 }
 #chat .body > div {
   display: flex;
@@ -527,7 +531,11 @@ body > .side div.options.text button {
   pointer-events: auto;
 }
 #chat .foot {
-  grid-area: 2/1;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 65px;
   background-color: rgb(38.8, 37.88, 38.8);
 }
 

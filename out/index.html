@@ -1,409 +1,161 @@
-
-    <!DOCTYPE><html><head>
-        <title>LinguaChat</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="style.css">
-    </head><body class="chats">
-        
-        <div class="side browser">
-            <div class="options">
-                <button><text>&#xf08e;</text><text>New Tab</text></button><button disabled><text>&#xf060;</text><text>Back</text></button><button disabled><text>&#xf021;</text><text>Refresh</text></button><button disabled><text>&#xf061;</text><text>Next</text></button><button disabled><text>&#xf00d;</text><text>Close</text></button>
+<html>
+        <head>
+            <title>LinguaChat</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="style.css">
+        </head>
+        <body>
+            <!-- BROWSER -->
+            <div class="side browser">
+                <div class="options">
+                    
+                        <button >
+                            <text>&#xf08e;</text>
+                            <text>New Tab</text>
+                        </button>
+                    
+                        <button disabled>
+                            <text>&#xf060;</text>
+                            <text>Back</text>
+                        </button>
+                    
+                        <button disabled>
+                            <text>&#xf021;</text>
+                            <text>Refresh</text>
+                        </button>
+                    
+                        <button disabled>
+                            <text>&#xf061;</text>
+                            <text>Next</text>
+                        </button>
+                    
+                        <button disabled>
+                            <text>&#xf00d;</text>
+                            <text>Close</text>
+                        </button>
+                    
+                </div>
+                <div id="browser">
+                    <text class="icon"></text>
+                    <text class="text"></text>
+                </div>
             </div>
-        </div>
-        <div id="browser">
-            <text class="icon"></text>
-            <text class="text"></text>
-        </div>
-        
-        <div class="side chat">
-            <div class="options text">
-                <button><text>&#xf09a;</text><text>Facebook</text></button>
-                <input placeholder="Search:"></input>
-                <button><text>&#xf002;</text><text>Search</text></button>
-            </div>
-            <div class="on">
-                <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t1.15752-9/454892547_816538394027707_498233134312495632_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=106&ccb=1-7&_nc_sid=b70caf&_nc_eui2=AeHpTvTtv8ax3aTPDX__GfTgAhb2OurKVicCFvY66spWJ7GaUQamz-E4H11S2BvOvTqae5IGQZE9m_6_8ey2LqZG&_nc_ohc=F0dEX2eGH3QQ7kNvgHWhrSr&_nc_zt=23&_nc_ht=scontent.fceb2-1.fna&oh=03_Q7cD1QFDHorcJ6hEgSDWaw145lfw4y_kqqWAJIHJzCXaZnkwkA&oe=67609FDB"></img>
-                <text>Homo Genius Superior & The Peaceful League Of Racists, Fallen Survivors, Yakuza Dawgs, & Fussy Catz</text>
-            </div>
-            <div>
-                <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/407378661_2174543962886331_2086404682384341131_n.jpg?stp=c3.10.941.940a_dst-jpg_s100x100&_nc_cat=108&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEjKfUMMIk_Zh2mWHHkXnR9fXMi4rAeR8N9cyLisB5Hw1YtRmDdMtupnMpe8yoYPkPm9riij83_yjCWduqL8lYx&_nc_ohc=eW1bkwxT4oAQ7kNvgGAfYMo&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AQpnyo4lMwOZEjzzppSftfZ&oh=00_AYBHmTub4cgavuH8JfAoeTgkfhYbYvjJhuJwdE4hGFPwnA&oe=673EEDEE"></img>
-                <text>Jolex Salmo</text>
-            </div>
-        </div>
-        <div id="chat">
-            <div class="body">
+            
+            <!-- CHAT -->
+            <div class="side chat">
+                <div class="options text">
+                    <button><text>&#xf09a;</text><text>Facebook</text></button>
+                    <input placeholder="Search:"></input>
+                    <button><text>&#xf002;</text><text>Search</text></button>
+                </div>
+                <div class="on">
+                    <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t1.15752-9/454892547_816538394027707_498233134312495632_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=106&ccb=1-7&_nc_sid=b70caf&_nc_eui2=AeHpTvTtv8ax3aTPDX__GfTgAhb2OurKVicCFvY66spWJ7GaUQamz-E4H11S2BvOvTqae5IGQZE9m_6_8ey2LqZG&_nc_ohc=F0dEX2eGH3QQ7kNvgHWhrSr&_nc_zt=23&_nc_ht=scontent.fceb2-1.fna&oh=03_Q7cD1QFDHorcJ6hEgSDWaw145lfw4y_kqqWAJIHJzCXaZnkwkA&oe=67609FDB"></img>
+                    <text>Homo Genius Superior & The Peaceful League Of Racists, Fallen Survivors, Yakuza Dawgs, & Fussy Catz</text>
+                </div>
                 <div>
-                    <img src="https://scontent.fmnl13-3.fna.fbcdn.net/v/t39.30808-1/409185686_2239831092888478_7614923379883250579_n.jpg?stp=dst-jpg_s100x100&_nc_cat=105&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeGdegm0PrnBNRXplKMiKwzM14mB99I6lg_XiYH30jqWD4urKrpgA3PEG8PE3QCa_FGvL-CvVfwuVi0zVHpCPzt3&_nc_ohc=0SWzcc56-RcQ7kNvgH-ifp1&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fmnl13-3.fna&_nc_gid=ASlz81YPqa-OBMiPnUNYNzc&oh=00_AYAxmGieYbzimJbHSxTmS9E-V3wK3JdDEsj0fJXywNKzGA&oe=673F36BB"></img>
-                    <text>Noli-von</text>
+                    <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/407378661_2174543962886331_2086404682384341131_n.jpg?stp=c3.10.941.940a_dst-jpg_s100x100&_nc_cat=108&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEjKfUMMIk_Zh2mWHHkXnR9fXMi4rAeR8N9cyLisB5Hw1YtRmDdMtupnMpe8yoYPkPm9riij83_yjCWduqL8lYx&_nc_ohc=eW1bkwxT4oAQ7kNvgGAfYMo&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AQpnyo4lMwOZEjzzppSftfZ&oh=00_AYBHmTub4cgavuH8JfAoeTgkfhYbYvjJhuJwdE4hGFPwnA&oe=673EEDEE"></img>
+                    <text>Jolex Salmo</text>
+                </div>
+            </div>
+            <div id="chat">
+                <div class="body">
                     <div>
-                        <text>gin
-                            <div>
-                                <h1>gin <i>(already)</i></h1>
-                                <h2>Particle - Filipino (Illongo)</h2>
-                                <p>Indicates past or completed action</p>
+                        <img src="https://scontent.fmnl13-3.fna.fbcdn.net/v/t39.30808-1/409185686_2239831092888478_7614923379883250579_n.jpg?stp=dst-jpg_s100x100&_nc_cat=105&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeGdegm0PrnBNRXplKMiKwzM14mB99I6lg_XiYH30jqWD4urKrpgA3PEG8PE3QCa_FGvL-CvVfwuVi0zVHpCPzt3&_nc_ohc=0SWzcc56-RcQ7kNvgH-ifp1&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fmnl13-3.fna&_nc_gid=ASlz81YPqa-OBMiPnUNYNzc&oh=00_AYAxmGieYbzimJbHSxTmS9E-V3wK3JdDEsj0fJXywNKzGA&oe=673F36BB"></img>
+                        <text>Noli-von</text>
+                        <div>
+                            <text>gin
+                                <div>
+                                    <h1>gin <i>(already)</i></h1>
+                                    <h2>Particle - Filipino (Illongo)</h2>
+                                    <p>Indicates past or completed action</p>
+                                </div>
+                            </text>
+                            <text>ss
+                                <div>
+                                    <h1>ss <i>(screenshot)</i></h1>
+                                    <h2>Abbreviation</h2>
+                                    <p>An abbreviation for 'screenshot'.</p>
+                                </div>
+                            </text>
+                            <text>ya
+                                <div>
+                                    <h1>ya <i>(it)</i></h1>
+                                    <h2>Pronoun - Filipino (Ilonggo)</h2>
+                                    <p>Refers to a subject or object.</p>
+                                </div>
+                            </text>
+                            <text>na
+                                <div>
+                                    <h1>na <i>(now)</i></h1>
+                                    <h2>Particle - Filipino (Ilonggo)</h2>
+                                    <p>Indicates immediacy or completion.</p>
+                                </div>
+                            </text>
+                            <text>nga
+                                <div>
+                                    <h1>nga <i>(that)</i></h1>
+                                    <h2>Particle - Filipino (Ilonggo)</h2>
+                                    <p>Used to emphasize or point to something specific.</p>
+                                </div>
+                            </text>
+                            <text>way
+                                <div>
+                                    <h1>way <i>(none)</i></h1>
+                                    <h2>Noun - Filipino (Ilonggo)</h2>
+                                    <p>Indicates absence or lack of something.</p>
+                                </div>
+                            </text>
+                            <text>ko
+                                <div>
+                                    <h1>ko <i>(me)</i></h1>
+                                    <h2>Pronoun - Filipino (Ilonggo)</h2>
+                                    <p>First person singular possessive pronoun.</p>
+                                </div>
+                            </text>
+                            <div class="translated">
+                                He already screenshot without me
                             </div>
-                        </text>
-                        <text>ss
-                            <div>
-                                <h1>ss <i>(screenshot)</i></h1>
-                                <h2>Abbreviation</h2>
-                                <p>An abbreviation for 'screenshot'.</p>
-                            </div>
-                        </text>
-                        <text>ya
-                            <div>
-                                <h1>ya <i>(it)</i></h1>
-                                <h2>Pronoun - Filipino (Ilonggo)</h2>
-                                <p>Refers to a subject or object.</p>
-                            </div>
-                        </text>
-                        <text>na
-                            <div>
-                                <h1>na <i>(now)</i></h1>
-                                <h2>Particle - Filipino (Ilonggo)</h2>
-                                <p>Indicates immediacy or completion.</p>
-                            </div>
-                        </text>
-                        <text>nga
-                            <div>
-                                <h1>nga <i>(that)</i></h1>
-                                <h2>Particle - Filipino (Ilonggo)</h2>
-                                <p>Used to emphasize or point to something specific.</p>
-                            </div>
-                        </text>
-                        <text>way
-                            <div>
-                                <h1>way <i>(none)</i></h1>
-                                <h2>Noun - Filipino (Ilonggo)</h2>
-                                <p>Indicates absence or lack of something.</p>
-                            </div>
-                        </text>
-                        <text>ko
-                            <div>
-                                <h1>ko <i>(me)</i></h1>
-                                <h2>Pronoun - Filipino (Ilonggo)</h2>
-                                <p>First person singular possessive pronoun.</p>
-                            </div>
-                        </text>
-                        <div class="translated">
-                            He already screenshot without me
                         </div>
                     </div>
                 </div>
+                <div class="foot"></div>
             </div>
-            <div class="foot"></div>
-        </div>
-        
-        <div id="nav">
-            <button>
-                <img src="logo_gray.png"></img>
-            </button>
-            <button><text>&#xe60e;</text><text>Browser</text></button><button><text>&#xe1de;</text><text>Chats</text></button><button><text>&#xe0c0;</text><text>Dictionary</text></button><button><text>&#xf0c0;</text><text>Accounts</text></button><button><text>&#xf085;</text><text>Settings</text></button>
-            <div class="ripples"></div>
-        </div>
-        <script>
-            var env_origin = {browser:0,main_win:0,scrape_win:0,act:0};
-            var handle = {
-                async get(target, prop, rec) {
-                    //var p = performance.now();
-                    if (target != env_origin && target.electron_type == 'object' && prop == 'then') return target;
-                    let res = await electron.get(target == env_origin ? null : target, prop);
-                    //console.log('GET', arguments);
-                    //console.log(p,'RES', res);
-                    if (typeof res == 'object') {
-                        if (res.electron_type == 'function') {
-                            let o = ()=>{};
-                            o.data = {
-                                electron_type: 'function',
-                                electron_path: [...(res.electron_path??[]), prop],
-                            };
-                            return new Proxy(o, handle);
-                        } else if (res.electron_type == 'object') {
-                            let o = {
-                                electron_type: 'object',
-                                electron_path: [...(res.electron_path??[]), prop],
-                            };
-                            return new Proxy(o, handle);
-                        } else {
-                            throw new Error('Unknown object type of '+String(res.electron_type));
-                            return undefined;
-                        }
-                    }
-                    return typeof res == 'object' ? undefined : res;
-                },
-                set(target, prop, val) {
-                    //console.log('SET', arguments);
-                    return electron.set(target == env_origin ? null : target, prop, val);
-                },
-                apply(target, thisArg, args) {
-                    //console.log('APPLY', arguments, target.data);
-                    return electron.run(target.data, args);
-                },
-            };
-            var env = new Proxy(env_origin, handle);
-            var events = {"delta_url":()=>{},"delta_title":()=>{},"delta_favicon":()=>{},"delta_focus":()=>{},"on_error":()=>{}};
-            (async () => {
+            <!-- MAIN -->
+            <div id="nav">
+                <button>
+                    <img src="logo_gray.png"></img>
+                </button>
                 
-    var _a, _b;
-    // Variables
-    var id = await env.main_win;
-    var s_id = await env.scrape_win;
-    var def_url = await (await env.browser).default_url;
-    var scraps = {};
-    // Shortcuts
-    var q = (x, dom = document) => dom.querySelector(x);
-    var Qf = (x, dom = document) => ((f) => dom.querySelectorAll(x).forEach(f));
-    var Q = (x, dom = document) => Array.from(dom.querySelectorAll(x));
-    var wQ = (s, w = 100) => `new Promise((res,rej)=>{
-        const start = Date.now();
-        const check = () => {
-            const ele = document.querySelector('${s}');
-            if (ele) res(ele);
-            else setTimeout(check, ${w});
-        };
-        check();
-    });`;
-    var wC = (code, w = 100) => `new Promise((res,rej)=>{
-        const start = Date.now();
-        const func = () => {
-            ${code}
-        };
-        const check = () => {
-            let out = func();
-            if (out != undefined) res(out);
-            else setTimeout(check, ${w});
-        };
-        check();
-    });`;
-    // Functions
-    async function update_browser_window() {
-        var _a;
-        let r = (_a = q('#browser')) === null || _a === void 0 ? void 0 : _a.getBoundingClientRect();
-        if (r == undefined)
-            return;
-        (await (await (await env.browser).wins)[await env.main_win]).size = [
-            r.left + 2,
-            r.top + 2,
-            r.width - 4,
-            r.height - 4,
-        ];
-    }
-    async function update_browser_option(target_id = null) {
-        let focus_id = await (await (await (await env.browser).wins)[id]).focus;
-        if (target_id != null && target_id != focus_id)
-            return;
-        Qf('.side.browser>div.options>button')(async (d, n) => {
-            if (focus_id == -1) {
-                if (n != 0)
-                    d.setAttribute('disabled', '');
-                else
-                    d.removeAttribute('disabled');
-                return;
-            }
-            let his_len = await (await (await (await (await env.browser).tabs)[focus_id]).history).length;
-            let his_pos = await (await (await (await env.browser).tabs)[focus_id]).history_pos;
-            console.log(`his_pos(${his_pos})/his_len(${his_len})`);
-            if (n == 1 && his_pos == 0 || n == 3 && his_len == his_pos + 1)
-                d.setAttribute('disabled', '');
-            else
-                d.removeAttribute('disabled');
-        });
-    }
-    // Binding
-    (_a = q('#nav')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', function (e) {
-        if (!(e instanceof MouseEvent))
-            return;
-        let w = document.createElement('div');
-        let r = this.getBoundingClientRect();
-        let p = q('#nav .ripples');
-        w.classList.add('ripple');
-        w.style.left = `${e.clientX - r.left}px`;
-        w.style.top = `${e.clientY - r.top}px`;
-        p === null || p === void 0 ? void 0 : p.appendChild(w);
-        setTimeout(() => p === null || p === void 0 ? void 0 : p.removeChild(w), 500);
-    });
-    Qf('#nav>button')(d => d.addEventListener('click', async function () {
-        let t = Q('text:last-child', this);
-        if (t.length == 0)
-            return;
-        let n = t[0].innerText.toLowerCase();
-        document.body.setAttribute('class', n);
-        (await (await (await env.browser).wins)[id]).show = n == 'browser';
-        (await (await (await env.browser).wins)[s_id]).show = n == 'chats';
-        if (n == 'browser')
-            update_browser_window();
-        else if (n == 'chats') {
-            if (scraps.fb == undefined) {
-                Qf('.side.chat>div:not(.options)')(d => { var _a; return (_a = d.parentElement) === null || _a === void 0 ? void 0 : _a.removeChild(d); });
-                scraps.fb = {
-                    id: await (await (await env.browser).open)(null, s_id, 'https://www.facebook.com/messages'),
-                    exec: null,
-                };
-                scraps.fb.exec = (await (await (await (await (await (await env.browser).tabs)[scraps.fb.id]).view).webContents).executeJavaScript);
-                let q_main_chats = '[aria-label="Chats"] [data-virtualized="false"] [role="link"]';
-                scraps.fb.exec(wQ(q_main_chats)).then(() => scraps.fb.exec(wC(`
-                        let array = Array.from(document.querySelectorAll('${q_main_chats}'));
-                        let out = [];
-                        for (let d of array) {
-                            let prof = d.querySelector('img[referrerpolicy="origin-when-cross-origin"]');
-                            let name = d.querySelector(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>span>span');
-                            let prev = d.querySelector(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:first-child');
-                            let last = d.querySelector(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:last-child');
-                            if (prof == null || name == null || prev == null || last == null) return undefined;
-                            out.push({
-                                link: d.getAttribute('href'),
-                                prof: prof.src,
-                                name: name.innerText,
-                                prev: prev.innerText.replace(/\\s+/g,' '),
-                                last: last.innerText.split('\\n')[0],
-                            });
-                        }
-                        return out;
-                    `)).then((data) => {
-                    var _a;
-                    for (const d of data) {
-                        let dom = document.createElement('div');
-                        dom.innerHTML = `
-                                <img class="loaded" src="${d.prof}"></img>
-                                <text>${d.name}</text>
-                                <span>${d.prev} ${d.last}</span>
-                            `;
-                        (_a = q('.side.chat')) === null || _a === void 0 ? void 0 : _a.appendChild(dom);
-                    }
-                    scraps.fb.exec(wC(`
-                            var data = Array.from(document.querySelectorAll('[role=main]>div>div>div>div>div>div+div>div>div>div>div>div>div>div>div>div>div>div>div [role=row]:last-child>div:first-child>div')).reverse();
-                            var img = null;
-                            var out = [];
-                            data.forEach(d => {
-                                let main = d.querySelector(':scope>div[class]:not([role=presentation])')
-                                let img_tmp = main?.querySelector(':scope>div:first-child img[style="border-radius: 50%;"]');
-                                if (img_tmp) img = img_tmp;
-                                let got = {
-                                    name: img == null ? 'Unknown' : img.getAttribute('alt'),
-                                    prof: img == null ? '' : img.src,
-                                    text: main?.querySelector(':scope>div:nth-child(2)>div:first-child>div:first-child').innerText,
-                                };
-                                if (got.text != undefined) out.push(got);
-                            });
-                            out = out.reverse();
-                            return out;
-                        `)).then((data) => {
-                        let out = '';
-                        for (const d of data) {
-                            out += `<div>
-                                    <img src="${d.prof}"></img>
-                                    <text>${d.name}</text>
-                                    <div>
-                                        ${d.text}
-                                    </div>
-                                </div>`;
-                        }
-                        let body = q('#chat .body');
-                        if (body)
-                            body.innerHTML = out;
-                    });
-                }));
-            }
-        }
-    }));
-    // Browser
-    Qf('.side.browser>div.options>button')(async (d, n) => {
-        if (n == 0)
-            d.addEventListener('click', async () => {
-                var _a, _b, _c;
-                (_a = q('#browser')) === null || _a === void 0 ? void 0 : _a.setAttribute('class', 'loading');
-                let i = await (await (await env.browser).open)(null, id, def_url);
-                let d = document.createElement('div');
-                d.setAttribute('data-id', String(i));
-                d.innerHTML = '<img onload="this.classList.add(\'loaded\')"></img><text></text><input placeholder="Page URL:" value="' + (await (await env.browser).default_url) + '"></input>';
-                (_b = q('input', d)) === null || _b === void 0 ? void 0 : _b.addEventListener('change', async () => {
-                    var _a;
-                    let url = (_a = q('input', d)) === null || _a === void 0 ? void 0 : _a.value;
-                    if (!url.startsWith('http://') && !url.startsWith('https://'))
-                        url = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
-                    (await (await env.browser).open)(i, id, url !== null && url !== void 0 ? url : null);
-                });
-                d.addEventListener('click', async () => {
-                    (await (await env.browser).open)(i, id);
-                });
-                (_c = q('.side.browser')) === null || _c === void 0 ? void 0 : _c.appendChild(d);
-                events.delta_focus(i, id);
-            });
-        else if (n < 4)
-            d.addEventListener('click', async () => {
-                let focus = await (await (await (await env.browser).wins)[id]).focus;
-                console.log(focus);
-                if (focus == -1)
-                    return;
-                (await (await env.browser).go)(focus, n - 2);
-            });
-        else if (n == 4)
-            d.addEventListener('click', async () => {
-                let focus = await (await (await (await env.browser).wins)[id]).focus;
-                if (focus == -1)
-                    return;
-                (await (await env.browser).close)(focus);
-                Qf(`.side.browser>div:not(.options)[data-id="${focus}"]`)(d => {
-                    var _a;
-                    (_a = d.parentElement) === null || _a === void 0 ? void 0 : _a.removeChild(d);
-                });
-            });
-    });
-    (_b = q('#browser')) === null || _b === void 0 ? void 0 : _b.addEventListener('click', function () {
-        var _a;
-        let type = this.hasAttribute('class') ? this.getAttribute('class') : '';
-        if (type == '')
-            (_a = q('.side.browser>div.options>button:first-child')) === null || _a === void 0 ? void 0 : _a.click();
-    });
-    events.delta_url = async (id, url) => {
-        Qf(`.side.browser>div:not(.options)[data-id="${id}"]`)(d => {
-            let dom = q('input', d);
-            if (dom)
-                dom.value = url;
-        });
-        update_browser_option(id);
-    };
-    events.delta_title = (id, title) => {
-        Qf(`.side.browser>div:not(.options)[data-id="${id}"]`)(d => {
-            let dom = q('text', d);
-            if (dom)
-                dom.innerText = title;
-        });
-    };
-    events.delta_favicon = (id, icons) => {
-        Qf(`.side.browser>div:not(.options)[data-id="${id}"]`)(d => {
-            let dom = q('img', d);
-            if (dom) {
-                dom.classList.remove('loaded');
-                if (icons.length)
-                    dom.src = icons[0];
-            }
-        });
-    };
-    events.delta_focus = async (tab, win) => {
-        var _a, _b;
-        console.log('FOCUSED', tab, win);
-        if (win != id)
-            return;
-        if (tab == -1)
-            (_a = q('#browser')) === null || _a === void 0 ? void 0 : _a.setAttribute('class', '');
-        Qf(`.side.browser>div:not(.options)`)(d => {
-            console.log(d.getAttribute('data-id'), tab, d);
-            d.setAttribute('class', d.getAttribute('data-id') == String(tab) ? 'on' : '');
-        });
-        update_browser_option();
-        let err = await (await (await (await env.browser).tabs)[tab]).error;
-        console.log('error code', err);
-        if (err != 200)
-            (_b = q('#browser')) === null || _b === void 0 ? void 0 : _b.setAttribute('class', 'error');
-    };
-    events.on_error = (code) => {
-        var _a;
-        (_a = q('#browser')) === null || _a === void 0 ? void 0 : _a.setAttribute('class', 'error');
-    };
-    window.addEventListener('resize', update_browser_window);
-
-            })();
-        </script>
-    </body></html>
+                    <button>
+                        <text>&#xe60e;</text>
+                        <text>Browser</text>
+                    </button>
+                
+                    <button>
+                        <text>&#xe1de;</text>
+                        <text>Chats</text>
+                    </button>
+                
+                    <button>
+                        <text>&#xe0c0;</text>
+                        <text>Dictionary</text>
+                    </button>
+                
+                    <button>
+                        <text>&#xf0c0;</text>
+                        <text>Accounts</text>
+                    </button>
+                
+                    <button>
+                        <text>&#xf085;</text>
+                        <text>Settings</text>
+                    </button>
+                
+                <div class="ripples"></div>
+            </div>
+            <script>
+                
+            </script>
+        </body>
+    </html>

@@ -322,17 +322,21 @@ body>.side
         text.text::after
             content: 'Unknown Error'
 #chat
+    position: relative
     display: none
     grid-area: 2 / 4
-    grid-template-rows: auto $unit
-    grid-template-columns: auto
     border: 2px solid mix(#fff, $dark, 8%)
     border-radius: $unit/5
     .body
-        grid-area: 1 / 1
+        position: absolute
+        left: 0
+        top: 0
+        width: 100%
+        height: calc(100% - $unit)
         display: flex
         flex-direction: column
         padding-top: $unit
+        overflow: hidden auto
         &>div
             display: flex
             flex-direction: column
@@ -456,7 +460,11 @@ body>.side
             
 
     .foot
-        grid-area: 2 / 1
+        position: absolute
+        left: 0
+        bottom: 0
+        width: 100%
+        height: $unit
         background-color: mix(#fff, $dark, 8%)
 
 body
