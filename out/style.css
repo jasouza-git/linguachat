@@ -20,6 +20,15 @@
   font-weight: 400;
   font-display: block;
   src: url(fonts/fa-regular-400.woff2) format("woff2");
+  unicode-range: U+F000-F8FF;
+}
+@font-face {
+  font-family: fa;
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(fonts/fa-brands-400.woff2) format("woff2");
+  unicode-range: U+F000-F8FF;
 }
 @font-face {
   font-family: fa;
@@ -62,7 +71,7 @@ html, body {
 }
 
 body {
-  background-image: linear-gradient(135deg, #141314, #141b1a);
+  background-image: linear-gradient(135deg, #141314, rgb(20.05, 27, 26.3));
   display: grid;
   grid-template-rows: 13px auto 13px;
   grid-template-columns: 65px 260px 13px auto 13px;
@@ -92,7 +101,7 @@ body {
   position: relative;
 }
 #nav button:first-child {
-  border: 0 solid #262526;
+  border: 0 solid rgb(38.2, 36.9, 37.8);
   margin: 0 13px;
   padding: 13px 0;
   border-width: 0 0 2px 0;
@@ -131,7 +140,7 @@ body {
   position: absolute;
   left: 0;
   top: 13px;
-  border: 0 solid #4f4e4f;
+  border: 0 solid rgb(78.75, 78, 78.75);
   width: 100%;
   height: calc(100% - 26px);
   pointer-events: none;
@@ -139,7 +148,7 @@ body {
 
 body > .side {
   grid-area: 2/2;
-  background-color: #272627;
+  background-color: rgb(38.8, 37.88, 38.8);
   border-radius: 13px;
   overflow: hidden;
   flex-direction: column;
@@ -149,17 +158,17 @@ body > .side div:not(.options) {
   position: relative;
   display: grid;
   grid-template-rows: 24.375px 4.0625px auto;
-  grid-template-columns: 32.5px calc(100% - 32.5px);
+  grid-template-columns: 24.375px 4.0625px calc(100% - 32.5px);
   flex: 0 0 65px;
   padding: 6.5px;
-  background-image: linear-gradient(#272627, #272627);
+  background-image: linear-gradient(rgb(38.8, 37.88, 38.8), rgb(38.8, 37.88, 38.8));
   transition: background 0.5s, background 0.5s;
   margin-top: -2px;
 }
 body > .side div:not(.options) img {
   grid-area: 1/1;
-  width: 24.375px;
-  height: 24.375px;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.5s;
@@ -171,22 +180,34 @@ body > .side div:not(.options) img:not(.loaded) + text {
   grid-area: 1/1/span 1/span 2;
 }
 body > .side div:not(.options) text {
-  grid-area: 1/2;
+  grid-area: 1/3;
   text-align: left;
   line-height: 24.375px;
   color: #cac6c6;
   pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+body > .side div:not(.options) span {
+  grid-area: 2/3;
+  color: #cac6c6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 75%;
+  opacity: 0.75;
 }
 body > .side div:not(.options) input {
-  grid-area: 3/1/span 1/span 2;
+  grid-area: 3/1/span 1/span 3;
   border: 0;
   border-radius: 6.5px;
   margin: 3.25px;
   margin-top: 0;
   padding: 0 6.5px;
-  background-color: #373637;
+  background-color: rgb(55.25, 54.4, 55.25);
   color: #cac6c6;
-  box-shadow: 0 0 0 #272627;
+  box-shadow: 0 0 0 rgb(38.8, 37.88, 38.8);
   transition: box-shadow 0.5s;
 }
 body > .side div:not(.options)::after {
@@ -196,18 +217,18 @@ body > .side div:not(.options)::after {
   top: 0;
   width: calc(100% - 26px);
   height: 100%;
-  border: 0 solid #2f2e2f;
+  border: 0 solid rgb(47.3, 45.85, 46.7);
   border-top-width: 2px;
   pointer-events: none;
 }
 body > .side div:not(.options):not(.on):hover {
-  background-color: #302f30;
+  background-color: rgb(48.2, 47.32, 48.2);
 }
 body > .side div:not(.options):not(.on):hover input {
-  box-shadow: 0 0 13px #272627;
+  box-shadow: 0 0 13px rgb(38.8, 37.88, 38.8);
 }
 body > .side div:not(.options).on {
-  background-image: linear-gradient(#559d63, #1c7b67);
+  background-image: linear-gradient(rgb(84.52, 156.752, 98.92), rgb(28.12, 122.552, 103.12));
 }
 body > .side div:not(.options).on::after, body > .side div:not(.options).on + div::after {
   display: none;
@@ -223,7 +244,7 @@ body > .side div.options {
   margin: 13px;
   display: flex;
   height: 26px;
-  border: 2px solid #434243;
+  border: 2px solid rgb(67, 66.2, 67);
   border-radius: 13px;
 }
 body > .side div.options button {
@@ -239,13 +260,13 @@ body > .side div.options button text:first-child {
 body > .side div.options button text:last-child {
   position: absolute;
   opacity: 0;
-  background-color: #434243;
+  background-color: rgb(67, 66.2, 67);
   padding: 3.25px 6.5px;
   border-radius: 13px;
   text-align: left;
   transition: opacity 0.5s;
   pointer-events: none;
-  box-shadow: 0 0 13px #272627;
+  box-shadow: 0 0 13px rgb(38.8, 37.88, 38.8);
   white-space: nowrap;
   z-index: 1;
   left: 50%;
@@ -259,35 +280,63 @@ body > .side div.options button:not(:first-child)::after {
   top: 3.25px;
   width: 100%;
   height: calc(100% - 6.5px);
-  border-left: 2px solid #373637;
+  border-left: 2px solid rgb(55.25, 54.4, 55.25);
   pointer-events: none;
 }
 body > .side div.options button:not(:disabled):hover text:last-child {
   opacity: 1;
 }
 body > .side div.options button:disabled {
-  color: #6f6d6d;
+  color: rgb(111, 108.5, 109);
   cursor: default;
+}
+body > .side div.options input {
+  background: none;
+  border: 0;
+  color: #cac6c6;
+  padding: 0 6.5px;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-width: 0;
+}
+body > .side div.options.text button {
+  flex-grow: 0;
+  flex-basis: 26px;
+}
+
+.side.chat > div:not(.options) {
+  grid-template-columns: 65px 0 calc(100% - 65px);
+}
+.side.chat > div:not(.options) img {
+  grid-area: 1/1/span 3;
+  border-radius: 50%;
+  margin: 6.5px;
+  width: calc(100% - 13px);
+  height: calc(100% - 13px);
+}
+.side.chat > div:not(.options) span {
+  grid-area: 3/3;
 }
 
 #browser {
   display: none;
   grid-area: 2/4;
-  border: 2px solid #272627;
+  border: 2px solid rgb(38.8, 37.88, 38.8);
   justify-content: center;
   align-items: center;
   flex-direction: column;
 }
 #browser text.icon {
   font-family: fa;
-  color: #272627;
+  color: rgb(38.8, 37.88, 38.8);
   font-size: 65px;
 }
 #browser text.icon::after {
   content: "\f08e";
 }
 #browser text.text {
-  color: #272627;
+  color: rgb(38.8, 37.88, 38.8);
   font-size: 24.375px;
   line-height: 65px;
 }
@@ -319,22 +368,167 @@ body > .side div.options button:disabled {
 #chat {
   display: none;
   grid-area: 2/4;
-  grid-template-rows: 65px auto 65px;
+  grid-template-rows: auto 65px;
   grid-template-columns: auto;
-  border: 2px solid #272627;
+  border: 2px solid rgb(38.8, 37.88, 38.8);
   border-radius: 13px;
-  overflow: hidden;
-}
-#chat .head {
-  grid-area: 1/1;
-  background-color: #272627;
 }
 #chat .body {
-  grid-area: 2/1;
+  grid-area: 1/1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 65px;
+}
+#chat .body > div {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 0 0 0 65px;
+  justify-content: center;
+  align-items: start;
+  min-height: 65px;
+}
+#chat .body > div > img {
+  position: absolute;
+  left: 13px;
+  bottom: 13px;
+  width: 39px;
+  height: 39px;
+  border-radius: 50%;
+}
+#chat .body > div > text {
+  position: absolute;
+  opacity: 0;
+  background-color: rgb(67, 66.2, 67);
+  padding: 3.25px 6.5px;
+  border-radius: 13px;
+  text-align: left;
+  transition: opacity 0.5s;
+  pointer-events: none;
+  box-shadow: 0 0 13px rgb(38.8, 37.88, 38.8);
+  white-space: nowrap;
+  z-index: 1;
+  top: 32.5px;
+  left: 0;
+  transform: translate(-100%, -50%);
+  color: #cac6c6;
+}
+#chat .body > div > img:hover + text {
+  opacity: 1;
+}
+#chat .body > div > div {
+  margin: 6.5px;
+  padding: 6.5px;
+  color: #141314;
+  position: relative;
+}
+#chat .body > div > div::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  position: absolute;
+  background-color: #cac6c6;
+  z-index: 0;
+  transform: rotate(45deg);
+  left: -6.5px;
+  top: 9.75px;
+}
+#chat .body > div > div::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6.5px;
+  background-color: #cac6c6;
+  z-index: -1;
+  box-shadow: 0 0 6.5px #141314;
+}
+#chat .body > div > div > div.translated {
+  position: absolute;
+  left: 0;
+  top: calc(100% - 13px);
+  width: 100%;
+  padding: 6.5px;
+  padding-top: 19.5px;
+  border-radius: 6.5px;
+  font-size: 75%;
+  background-image: linear-gradient(135deg, #73EC8B, #15B392);
+  z-index: -2;
+}
+#chat .body > div > div > text {
+  position: relative;
+  border: 1px solid rgb(192.9, 189.05, 189.1);
+  background-color: #cac6c6;
+  border-radius: 6.5px;
+  cursor: pointer;
+}
+#chat .body > div > div > text > div {
+  position: absolute;
+  top: -6.5px;
+  left: 50%;
+  width: 195px;
+  z-index: 1;
+  transform: translate(-50%, -100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+#chat .body > div > div > text > div h1 {
+  margin: 0;
+  font-size: 100%;
+  text-align: center;
+}
+#chat .body > div > div > text > div h1 i {
+  opacity: 0.8;
+}
+#chat .body > div > div > text > div h2 {
+  margin: 0;
+  font-size: 75%;
+  text-align: center;
+  font-style: italic;
+  opacity: 0.75;
+}
+#chat .body > div > div > text > div p {
+  margin: 6.5px;
+  font-size: 75%;
+}
+#chat .body > div > div > text > div::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 13px;
+  height: 13px;
+  background: #0278AE;
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 6.5px #141314;
+  z-index: -2;
+}
+#chat .body > div > div > text > div::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(135deg, #51ADCF, #0278AE);
+  border-radius: 13px;
+  box-shadow: 0 0 6.5px #141314;
+  z-index: -1;
+}
+#chat .body > div > div > text:hover {
+  border-color: rgb(183.8, 180.1, 180.2);
+  background-color: rgb(183.8, 180.1, 180.2);
+}
+#chat .body > div > div > text:hover > div {
+  opacity: 1;
+  pointer-events: auto;
 }
 #chat .foot {
-  grid-area: 3/1;
-  background-color: #272627;
+  grid-area: 2/1;
+  background-color: rgb(38.8, 37.88, 38.8);
 }
 
 body.browser > .side.browser, body.browser #browser {
@@ -419,13 +613,13 @@ body.chats #nav > button:nth-child(3) text:first-child {
   #nav button:not(:first-child) text:last-child {
     position: absolute;
     opacity: 0;
-    background-color: #434243;
+    background-color: rgb(67, 66.2, 67);
     padding: 3.25px 6.5px;
     border-radius: 13px;
     text-align: left;
     transition: opacity 0.5s;
     pointer-events: none;
-    box-shadow: 0 0 13px #272627;
+    box-shadow: 0 0 13px rgb(38.8, 37.88, 38.8);
     white-space: nowrap;
     z-index: 1;
     left: 73.125px;

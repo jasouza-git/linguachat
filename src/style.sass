@@ -27,6 +27,14 @@ $time: .5s
     font-weight: 400
     font-display: block
     src: url(fonts/fa-regular-400.woff2) format('woff2')
+    unicode-range: U+F000-F8FF
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 400
+    font-display: block
+    src: url(fonts/fa-brands-400.woff2) format('woff2')
+    unicode-range: U+F000-F8FF
 @font-face
     font-family: fa
     font-style: normal
@@ -151,7 +159,7 @@ body>.side
         position: relative
         display: grid
         grid-template-rows: 3*$unit/8 $unit/16 auto
-        grid-template-columns: $unit/2 calc(100% - $unit/2)
+        grid-template-columns: 3*$unit/8 $unit/16 calc(100% - $unit/2)
         flex: 0 0 $unit
         padding: $unit/10
         background-image: linear-gradient(mix(#fff, $dark, 8%), mix(#fff, $dark, 8%))
@@ -159,8 +167,8 @@ body>.side
         margin-top: -2px
         img
             grid-area: 1 / 1
-            width: 3*$unit/8
-            height: 3*$unit/8
+            width: 100%
+            height: 100%
             pointer-events: none
             opacity: 0
             transition: opacity $time
@@ -169,13 +177,24 @@ body>.side
             &:not(.loaded) + text
                 grid-area: 1 / 1 / span 1 / span 2
         text
-            grid-area: 1 / 2
+            grid-area: 1 / 3
             text-align: left
             line-height: 3*$unit/8
             color: $text
             pointer-events: none
+            text-overflow: ellipsis
+            white-space: nowrap
+            overflow: hidden
+        span
+            grid-area: 2 / 3
+            color: $text
+            text-overflow: ellipsis
+            white-space: nowrap
+            overflow: hidden
+            font-size: 75%
+            opacity: .75
         input
-            grid-area: 3 / 1 / span 1 / span 2
+            grid-area: 3 / 1 / span 1 / span 3
             border: 0
             border-radius: $unit/10
             margin: $unit/20
@@ -241,7 +260,31 @@ body>.side
             &:disabled
                 color: mix($dark, $text, 50%)
                 cursor: default
-            
+        input
+            background: none
+            border: 0
+            color: $text
+            padding: 0 $unit/10
+            flex-grow: 1
+            flex-shrink: 1
+            flex-basis: 0
+            min-width: 0
+        &.text
+            button
+                flex-grow: 0
+                flex-basis: 2*$unit/5
+
+.side.chat>div:not(.options)
+    grid-template-columns: $unit 0 calc(100% - $unit)
+    img
+        grid-area: 1 / 1 / span 3
+        border-radius: 50%
+        margin: $unit/10
+        width: calc(100% - $unit/5)
+        height: calc(100% - $unit/5)
+    span
+        grid-area: 3 / 3
+
 #browser
     display: none
     grid-area: 2 / 4
@@ -281,18 +324,139 @@ body>.side
 #chat
     display: none
     grid-area: 2 / 4
-    grid-template-rows: $unit auto $unit
+    grid-template-rows: auto $unit
     grid-template-columns: auto
     border: 2px solid mix(#fff, $dark, 8%)
     border-radius: $unit/5
-    overflow: hidden
-    .head
-        grid-area: 1 / 1
-        background-color: mix(#fff, $dark, 8%)
     .body
-        grid-area: 2 / 1
+        grid-area: 1 / 1
+        display: flex
+        flex-direction: column
+        padding-top: $unit
+        &>div
+            display: flex
+            flex-direction: column
+            position: relative
+            padding: 0 0 0 $unit
+            justify-content: center
+            align-items: start
+            min-height: $unit
+            &>img
+                position: absolute
+                left: $unit/5
+                bottom: $unit/5
+                width: 3*$unit/5
+                height: 3*$unit/5
+                border-radius: 50%
+            &>text
+                @include hover_text
+                top: $unit/2
+                left: 0
+                transform: translate(-100%, -50%)
+                color: $text
+            &>img:hover+text
+                opacity: 1
+            &>div
+                margin: $unit/10
+                padding: $unit/10
+                color: $dark
+                position: relative
+                &::before
+                    content: ''
+                    width: $unit/5
+                    height: $unit/5
+                    position: absolute 
+                    background-color: $text
+                    z-index: 0
+                    transform: rotate(45deg)
+                    left: -$unit/10
+                    top: 3*$unit/20
+                &::after
+                    content: ''
+                    position: absolute
+                    left: 0
+                    top: 0
+                    width: 100%
+                    height: 100%
+                    border-radius: $unit/10
+                    background-color: $text
+                    z-index: -1
+                    box-shadow: 0 0 $unit/10 $dark
+                &>div.translated
+                    position: absolute
+                    left: 0
+                    top: calc(100% - $unit/5)
+                    width: 100%
+                    padding: $unit/10
+                    padding-top: 3*$unit/10
+                    border-radius: $unit/10
+                    font-size: 75%
+                    background-image: linear-gradient(135deg, $sec0, $sec1)
+                    z-index: -2
+                &>text
+                    position: relative
+                    border: 1px solid mix($text, $dark, 95%)
+                    background-color: $text
+                    border-radius: $unit/10
+                    cursor: pointer
+                    &>div
+                        position: absolute
+                        top: -$unit/10
+                        left: 50%
+                        width: $unit*3
+                        z-index: 1
+                        transform: translate(-50%, -100%)
+                        opacity: 0
+                        pointer-events: none
+                        transition: opacity $time
+                        h1
+                            margin: 0
+                            font-size: 100%
+                            text-align: center
+                            i
+                                opacity: .8
+                        h2
+                            margin: 0
+                            font-size: 75%
+                            text-align: center
+                            font-style: italic
+                            opacity: .75
+                        p
+                            margin: $unit/10
+                            font-size: 75%
+                        &::before
+                            content: ''
+                            position: absolute
+                            left: 50%
+                            bottom: -$unit/5
+                            width: $unit/5
+                            height: $unit/5
+                            background: $mai1
+                            transform: translate(-50%, -50%) rotate(45deg)
+                            box-shadow: 0 0 $unit/10 $dark
+                            z-index: -2
+                        &::after
+                            content: ''
+                            position: absolute
+                            left: 0
+                            top: 0
+                            width: 100%
+                            height: 100%
+                            background-image: linear-gradient(135deg, $mai0, $mai1)
+                            border-radius: $unit/5
+                            box-shadow: 0 0 $unit/10 $dark
+                            z-index: -1
+                    &:hover
+                        border-color: mix($text, $dark, 90%)
+                        background-color: mix($text, $dark, 90%)
+                        &>div
+                            opacity: 1
+                            pointer-events: auto
+
+            
+
     .foot
-        grid-area: 3 / 1
+        grid-area: 2 / 1
         background-color: mix(#fff, $dark, 8%)
 
 body

@@ -34,6 +34,8 @@ class Browser {
     tabs = {};
     /** @type {number} */
     focus = -1;
+    /** @type {number} */
+    id;
 
     /* ----- EVENT LISTENERS ----- */
     /**
@@ -116,17 +118,21 @@ class Browser {
     /** @param {HTMLElement} dom */
     constructor(dom) {
         this.dom = dom;
-        window.addEventListener('resize', this.show);
-        
-        electron.on('url-changed', (id,url) => {
-            this.on_delta_url(id,url);
+        electron.on('browser-created', id => {
+            this.id = id;
+            window.addEventListener('resize', this.show);
+            
+            electron.on('url-changed', (id,url) => {
+                this.on_delta_url(id,url);
+            });
+            electron.on('title-changed', (id,title) => {
+                this.on_delta_title(id,title);
+            });
+            electron.on('favicon-changed', (id,url) => {
+                this.on_delta_favicon(id, url);
+            });
         });
-        electron.on('title-changed', (id,title) => {
-            this.on_delta_title(id,title);
-        });
-        electron.on('favicon-changed', (id,url) => {
-            this.on_delta_favicon(id, url);
-        });
+        electron.send('browser-create');
         /*electron.on('browser-options', (...a) => {
             let c = [true,a[0],tab.len!=0,a[1],tab.len!=0];
             Qf('.side.browser>div.options>button')((b,n) => {
@@ -158,7 +164,9 @@ var Qf = x=>(f=>document.querySelectorAll(x).forEach((x,n)=>{
  * @returns {HTMLElement[]}
  */
 var Q = x=>Array.from(document.querySelectorAll(x));
-
+/**
+ * Main Browser
+ */
 var browser = new Browser(q('#browser')??document.createElement('div'));
 
 
