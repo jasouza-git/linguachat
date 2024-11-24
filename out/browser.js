@@ -23,11 +23,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Browser = void 0;
-exports.client_script = client_script;
+exports.client_script = exports.toJSCode = exports.Browser = exports.events = void 0;
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+exports.events = {
+    delta_url: () => { },
+    delta_title: () => { },
+    delta_favicon: () => { },
+    delta_status: () => { },
+    delta_focus: () => { },
+};
 /* ----- CLASS ----- */
 /**
  * Browser Library for Electron JS
@@ -38,6 +44,8 @@ const fs = __importStar(require("fs"));
  * - `open(tab,win,url)` - Opens tab to focus
  * - `go(tab,step)` - Goes to a relative tab history
  * - `close(tab,auto_focus)` - Closes a tab
+ * - `tab_len` - Length of tabs
+ * - `win_len` - Length of windows
  */
 class Browser {
     /* ----- SHORTCUTS ----- */
@@ -55,13 +63,22 @@ class Browser {
             id++;
         return id;
     }
+    /* ----- GETS ----- */
+    get tab_len() {
+        return Object.keys(this.tabs).length;
+    }
+    get win_len() {
+        return Object.keys(this.wins).length;
+    }
     /* ----- Functions ----- */
     /**
      * Creates a new window
      * @param size - Dimension side of the window
      */
-    new_win(size = [0, 0, 0, 0]) {
+    new_win(size = null) {
         let id = this.win_a_id();
+        if (size == null)
+            size = [0, 0, this.size[0], this.size[1]];
         this.wins[id] = new Proxy({
             focus: -1,
             size: size,
@@ -96,6 +113,8 @@ class Browser {
                 history_pos: -1,
                 status: 200,
             }, this.tab_handle);
+            if (url == null)
+                this.tabs[tab].view.webContents.loadURL(this.default_url);
         }
         // Create/Select window if null
         if (win == null) {
@@ -192,6 +211,30 @@ class Browser {
                 this.wins[at].focus = -1;
         }
     }
+    /* ----- AUTOMATION ----- */
+    async wait(tab, query, func) {
+        let wait = 100;
+        if (this.tabs[tab] == undefined)
+            return func([], true);
+        let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
+            new Promise((res,rej)=>{
+                let func = (
+                    ${func.toString()}
+                );
+                const start = Date.now();
+                const check = () => {
+                    const ele = document.querySelectorAll('${query}');
+                    if (ele.length != 0) {
+                        let out = func(Array.from(ele), false);
+                        if (out !== undefined) res(out);
+                    } else setTimeout(check, ${wait});
+                };
+                check();
+            });
+        `);
+        console.log('OUT', out);
+        return out;
+    }
     /* ----- CONSTRUCTOR ----- */
     constructor(data = null) {
         /** All browser tabs */
@@ -202,13 +245,16 @@ class Browser {
         this._last_window = null;
         /** Default url to newly created tabs */
         this.default_url = 'https://www.google.com';
+        /** Main browser size */
+        this.size = [800, 800];
         /* ----- HANDLER ----- */
         /** Deals with tab changes */
         this.tab_handle = {
+            browser: this,
             set(target, prop, val) {
                 target[prop] = val;
                 if ('url,title,favicon,status'.split(',').includes(prop))
-                    this.window.webContents.executeJavaScript(`events.delta_${prop}(${target.id},${JSON.stringify(val)})`);
+                    this.browser.window.webContents.executeJavaScript(`events.delta_${prop}(${target.id},${JSON.stringify(val)})`);
                 return true;
             }
         };
@@ -247,12 +293,13 @@ class Browser {
                 return true;
             },
         };
+        let size = data != null && !(data instanceof electron_1.BrowserWindow) && data.size != undefined ? data.size : [800, 800];
+        this.size = size;
         if (data instanceof electron_1.BrowserWindow)
             this.window = data;
         else {
             // Setup window when it can
             const setup = () => {
-                let size = data != null && data.size != undefined ? data.size : [800, 800];
                 this.window = new electron_1.BrowserWindow({
                     width: size[0],
                     height: size[1],
@@ -265,7 +312,11 @@ class Browser {
                 this.window.loadFile('out/index.html');
             };
             // Setup APP
-            electron_1.app.whenReady().then(setup);
+            electron_1.app.whenReady().then(() => {
+                setup();
+                if (data === null || data === void 0 ? void 0 : data.ready)
+                    data.ready(this);
+            });
             electron_1.app.on('window-all-closed', () => {
                 if (process.platform !== 'darwin')
                     electron_1.app.quit();
@@ -304,80 +355,102 @@ class Browser {
                         e = e[name];
                     }
                 if (typeof e == 'function')
-                    return e.apply(t, args);
+                    return e.apply(t, eval(args));
             });
         }
     }
 }
 exports.Browser = Browser;
 /* ----- FUNCTIONS ----- */
+function toJSCode(value) {
+    if (Array.isArray(value))
+        return '[' + value.map(toJSCode).join(',') + ']';
+    else if (typeof value === 'object' && value !== null)
+        return '{' + Object.entries(value).map(([key, val]) => '"' + key + '":' + toJSCode(val)).join(',') + '}';
+    else if (typeof value === 'function')
+        return value.toString();
+    return JSON.stringify(value);
+}
+exports.toJSCode = toJSCode;
 function client_script(action) {
     return /*js*/ `
-        var env_origin = {
-            tabs: 0,
-            wins: 0,
-            new_win: 0,
-            default_url: 0,
-            open: 0,
-            go: 0,
-            close: 0,
-        };
-        var handle = {
-            async get(target, prop, rec) {
-                if (target != env_origin && target.electron_type == 'object' && prop == 'then') return target;
-                let res = await electron.get(target == env_origin ? null : target, prop);
-                if (typeof res == 'object') {
-                    if (res.electron_type == 'function') {
-                        let o = ()=>{};
-                        o.data = {
-                            electron_type: 'function',
-                            electron_path: [...(res.electron_path??[]), prop],
-                        };
-                        return new Proxy(o, handle);
-                    } else if (res.electron_type == 'object') {
-                        let o = {
-                            electron_type: 'object',
-                            electron_path: [...(res.electron_path??[]), prop],
-                        };
-                        return new Proxy(o, handle);
-                    } else {
-                        throw new Error('Unknown object type of '+String(res.electron_type));
-                        return undefined;
-                    }
-                }
-                return typeof res == 'object' ? undefined : res;
-            },
-            set(target, prop, val) {
-                return electron.set(target == env_origin ? null : target, prop, val);
-            },
-            apply(target, thisArg, args) {
-                return electron.run(target.data, args);
-            },
-        };
-        var env = new Proxy(env_origin, handle);
-        var events = {
+        let events = {
             delta_url:()=>{},
             delta_title:()=>{},
             delta_favicon:()=>{},
             delta_status:()=>{},
             delta_focus:()=>{},
         };
-        (async () => {
-            ${(() => {
+        (() => {
+            let env_origin = {
+                tabs: 0,
+                wins: 0,
+                new_win: 0,
+                default_url: 0,
+                open: 0,
+                go: 0,
+                close: 0,
+                tab_len: 0,
+                win_len: 0,
+            };
+            let handle = {
+                async get(target, prop, rec) {
+                    if (target != env_origin && target.electron_type == 'object' && prop == 'then') return target;
+                    let res = await electron.get(target == env_origin ? null : target, prop);
+                    if (typeof res == 'object') {
+                        if (res.electron_type == 'function') {
+                            let o = ()=>{};
+                            o.data = {
+                                electron_type: 'function',
+                                electron_path: [...(res.electron_path??[]), prop],
+                            };
+                            return new Proxy(o, handle);
+                        } else if (res.electron_type == 'object') {
+                            let o = {
+                                electron_type: 'object',
+                                electron_path: [...(res.electron_path??[]), prop],
+                            };
+                            return new Proxy(o, handle);
+                        } else {
+                            throw new Error('Unknown object type of '+String(res.electron_type));
+                            return undefined;
+                        }
+                    }
+                    return typeof res == 'object' || typeof res == 'function' ? undefined : res;
+                },
+                set(target, prop, val) {
+                    return electron.set(target == env_origin ? null : target, prop, val);
+                },
+                apply(target, thisArg, args) {
+                    ${toJSCode.toString()}
+                    return electron.run(target.data, toJSCode(args));
+                },
+            };
+            let env = new Proxy(env_origin, handle);
+            (async () => {
+                ${(() => {
         let s = action.toString();
         let vm = s.slice(0, s.indexOf('{')).match(/(?<=\(\s*)[^\(\),\s]+(?=.*\=>)|[^\s\(\)]+(?=\s*\=>)/g);
         if (vm == null)
             throw Error("Couldnt find client script parameter name");
         let v = vm[0];
         s = s.slice(s.indexOf('{') + 1, s.lastIndexOf('}'));
-        let r = new RegExp(`\\b${v}(\\.[a-zA-Z0-9\_]+|\\[[^\\]]+\\])*`);
-        console.log(s, r, s.match(r));
-        s = s.replace(r, function (match) {
-            console.log(match.match(/(?<=\.|^)[a-zA-Z0-9\_]+|\\[[^\\]]+\\]/g));
-            return '';
+        let r;
+        s = s.replace(r = new RegExp(`\\b${v}(\\.\\w+|\\[[^\\]]+\\])*`, 'gm'), function (match, _, p, code) {
+            var _a;
+            let m = Array.from((_a = match.match(/(?<=\.|^)\w+|\[[^\]]+\]/g)) !== null && _a !== void 0 ? _a : []);
+            let e = code.slice(p + match.length).trim();
+            if (m.length == 0)
+                return '';
+            m[0] = 'env';
+            if (e[0] == '=')
+                return m.reduce((p, c, n) => `${n != m.length - 1 ? '(await ' : ''}${p}${c[0] == '[' ? '' : '.'}${c}${n != m.length - 1 ? ')' : ''}`);
+            return 'await ' + m.reduce((p, c) => `(await ${p}${c[0] == '[' ? '' : '.'}${c})`);
         });
-        return v;
+        return s;
     })()}
+            })();
         })();
     `;
 }
+exports.client_script = client_script;

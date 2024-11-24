@@ -34,6 +34,7 @@ export interface browser_window {
 export interface browser_parameter {
     size?:number[],
     html?:string,
+    ready?:(browser:Browser)=>any,
 }
 export interface client_events {
     /** A tab has changed its URL */
@@ -48,6 +49,14 @@ export interface client_events {
     delta_focus:(tab_index:number, window_index:number)=>void,
 }
 
+export let events:client_events = {
+    delta_url:()=>{},
+    delta_title:()=>{},
+    delta_favicon:()=>{},
+    delta_status:()=>{},
+    delta_focus:()=>{},
+};
+
 /* ----- CLASS ----- */
 /**
  * Browser Library for Electron JS
@@ -58,6 +67,8 @@ export interface client_events {
  * - `open(tab,win,url)` - Opens tab to focus
  * - `go(tab,step)` - Goes to a relative tab history
  * - `close(tab,auto_focus)` - Closes a tab
+ * - `tab_len` - Length of tabs
+ * - `win_len` - Length of windows
  */
 export class Browser {
     /* ----- PROPERTIES ----- */
@@ -71,14 +82,17 @@ export class Browser {
     private _last_window:number|null = null;
     /** Default url to newly created tabs */
     default_url:string = 'https://www.google.com';
+    /** Main browser size */
+    size:number[] = [800,800];
 
     /* ----- HANDLER ----- */
     /** Deals with tab changes */
     private tab_handle = {
+        browser: this,
         set(target:browser_tab, prop:string, val:any) {
             target[prop] = val;
             if ('url,title,favicon,status'.split(',').includes(prop))
-                this.window.webContents.executeJavaScript(`events.delta_${prop}(${target.id},${JSON.stringify(val)})`);
+                (this.browser as Browser).window.webContents.executeJavaScript(`events.delta_${prop}(${target.id},${JSON.stringify(val)})`);
             return true;
         }
     };
@@ -128,13 +142,22 @@ export class Browser {
         return id;
     }
 
+    /* ----- GETS ----- */
+    get tab_len():number {
+        return Object.keys(this.tabs).length;
+    }
+    get win_len():number {
+        return Object.keys(this.wins).length;
+    }
+
     /* ----- Functions ----- */
     /**
      * Creates a new window
      * @param size - Dimension side of the window
      */
-    new_win(size:number[]=[0,0,0,0]):number {
+    new_win(size:number[]|null=null):number {
         let id = this.win_a_id();
+        if (size == null) size = [0,0,this.size[0],this.size[1]];
         this.wins[id] = new Proxy({
             focus: -1,
             size: size,
@@ -169,6 +192,7 @@ export class Browser {
                 history_pos: -1,
                 status: 200,
             } as browser_tab, this.tab_handle);
+            if (url == null) this.tabs[tab].view.webContents.loadURL(this.default_url);
         }
         // Create/Select window if null
         if (win == null) {
@@ -254,14 +278,39 @@ export class Browser {
             else this.wins[at].focus = -1;
         }
     }
-    
+
+    /* ----- AUTOMATION ----- */
+    async wait<T>(tab:number, query:string, func:(doms:HTMLElement[],error:boolean)=>T|undefined):Promise<T> {
+        let wait = 100;
+        if (this.tabs[tab] == undefined) return func([], true)!;
+        let out:T = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
+            new Promise((res,rej)=>{
+                let func = (
+                    ${func.toString()}
+                );
+                const start = Date.now();
+                const check = () => {
+                    const ele = document.querySelectorAll('${query}');
+                    if (ele.length != 0) {
+                        let out = func(Array.from(ele), false);
+                        if (out !== undefined) res(out);
+                    } else setTimeout(check, ${wait});
+                };
+                check();
+            });
+        `);
+        console.log('OUT', out);
+        return out;
+    }
+
     /* ----- CONSTRUCTOR ----- */
     constructor(data:BrowserWindow|null|browser_parameter=null) {
+        let size:number[] = data != null && !(data instanceof BrowserWindow) && data.size != undefined ? data.size : [800,800];
+        this.size = size;
         if (data instanceof BrowserWindow) this.window = data;
         else {
             // Setup window when it can
             const setup = () => {
-                let size:number[] = data != null && data.size != undefined ? data.size : [800,800];
                 this.window = new BrowserWindow({
                     width: size[0],
                     height: size[1],
@@ -274,7 +323,10 @@ export class Browser {
                 this.window.loadFile('out/index.html');
             };
             // Setup APP
-            app.whenReady().then(setup);
+            app.whenReady().then(() => {
+                setup();
+                if (data?.ready) data.ready(this);
+            });
             app.on('window-all-closed', () => {
                 if (process.platform !== 'darwin') app.quit();
             });
@@ -299,86 +351,104 @@ export class Browser {
                 e[prop] = val;
                 return e[prop];
             });
-            ipcMain.handle('run', (_, from:any, args:any[]) => {
+            ipcMain.handle('run', (_, from:any, args:string) => {
                 let e:any = this;
                 let t:any = this;
                 if (from != null) for (const name of from.electron_path) {
                     t = e;
                     e = e[name];
                 }
-                if (typeof e == 'function') return e.apply(t, args);
+                if (typeof e == 'function') return e.apply(t, eval(args));
             });
         }
     }
 }
 
 /* ----- FUNCTIONS ----- */
-export function client_script(action:(env:Browser)=>void) {
+export function toJSCode(value:any):string {
+    if (Array.isArray(value))
+        return '['+value.map(toJSCode).join(',')+']';
+    else if (typeof value === 'object' && value !== null)
+        return '{'+Object.entries(value).map(([key, val]) => '"'+key+'":'+toJSCode(val)).join(',')+'}';
+    else if (typeof value === 'function')
+        return value.toString();
+    return JSON.stringify(value);
+}
+export function client_script(action:(env:Browser,...x:any[])=>void) {
     return /*js*/`
-        var env_origin = {
-            tabs: 0,
-            wins: 0,
-            new_win: 0,
-            default_url: 0,
-            open: 0,
-            go: 0,
-            close: 0,
-        };
-        var handle = {
-            async get(target, prop, rec) {
-                if (target != env_origin && target.electron_type == 'object' && prop == 'then') return target;
-                let res = await electron.get(target == env_origin ? null : target, prop);
-                if (typeof res == 'object') {
-                    if (res.electron_type == 'function') {
-                        let o = ()=>{};
-                        o.data = {
-                            electron_type: 'function',
-                            electron_path: [...(res.electron_path??[]), prop],
-                        };
-                        return new Proxy(o, handle);
-                    } else if (res.electron_type == 'object') {
-                        let o = {
-                            electron_type: 'object',
-                            electron_path: [...(res.electron_path??[]), prop],
-                        };
-                        return new Proxy(o, handle);
-                    } else {
-                        throw new Error('Unknown object type of '+String(res.electron_type));
-                        return undefined;
-                    }
-                }
-                return typeof res == 'object' ? undefined : res;
-            },
-            set(target, prop, val) {
-                return electron.set(target == env_origin ? null : target, prop, val);
-            },
-            apply(target, thisArg, args) {
-                return electron.run(target.data, args);
-            },
-        };
-        var env = new Proxy(env_origin, handle);
-        var events = {
+        let events = {
             delta_url:()=>{},
             delta_title:()=>{},
             delta_favicon:()=>{},
             delta_status:()=>{},
             delta_focus:()=>{},
         };
-        (async () => {
-            ${(() => {
-                let s = action.toString();
-                let vm = s.slice(0, s.indexOf('{')).match(/(?<=\(\s*)[^\(\),\s]+(?=.*\=>)|[^\s\(\)]+(?=\s*\=>)/g);
-                if (vm == null) throw Error("Couldnt find client script parameter name");
-                let v = vm[0];
-                s = s.slice(s.indexOf('{')+1, s.lastIndexOf('}'));
-                let r = new RegExp(`\\b${v}(\\.[a-zA-Z0-9\_]+|\\[[^\\]]+\\])*`);
-                console.log(s, r, s.match(r))
-                s = s.replace(r, function(match){
-                    console.log(match.match(/(?<=\.|^)[a-zA-Z0-9\_]+|\\[[^\\]]+\\]/g));
-                    return '';
-                })
-                return v;
-            })()}
+        (() => {
+            let env_origin = {
+                tabs: 0,
+                wins: 0,
+                new_win: 0,
+                default_url: 0,
+                open: 0,
+                go: 0,
+                close: 0,
+                tab_len: 0,
+                win_len: 0,
+            };
+            let handle = {
+                async get(target, prop, rec) {
+                    if (target != env_origin && target.electron_type == 'object' && prop == 'then') return target;
+                    let res = await electron.get(target == env_origin ? null : target, prop);
+                    if (typeof res == 'object') {
+                        if (res.electron_type == 'function') {
+                            let o = ()=>{};
+                            o.data = {
+                                electron_type: 'function',
+                                electron_path: [...(res.electron_path??[]), prop],
+                            };
+                            return new Proxy(o, handle);
+                        } else if (res.electron_type == 'object') {
+                            let o = {
+                                electron_type: 'object',
+                                electron_path: [...(res.electron_path??[]), prop],
+                            };
+                            return new Proxy(o, handle);
+                        } else {
+                            throw new Error('Unknown object type of '+String(res.electron_type));
+                            return undefined;
+                        }
+                    }
+                    return typeof res == 'object' || typeof res == 'function' ? undefined : res;
+                },
+                set(target, prop, val) {
+                    return electron.set(target == env_origin ? null : target, prop, val);
+                },
+                apply(target, thisArg, args) {
+                    ${toJSCode.toString()}
+                    return electron.run(target.data, toJSCode(args));
+                },
+            };
+            let env = new Proxy(env_origin, handle);
+            (async () => {
+                ${(() => {
+                    let s = action.toString();
+                    let vm = s.slice(0, s.indexOf('{')).match(/(?<=\(\s*)[^\(\),\s]+(?=.*\=>)|[^\s\(\)]+(?=\s*\=>)/g);
+                    if (vm == null) throw Error("Couldnt find client script parameter name");
+                    let v = vm[0];
+                    s = s.slice(s.indexOf('{')+1, s.lastIndexOf('}'));
+                    let r:RegExp;
+                    s = s.replace(r = new RegExp(`\\b${v}(\\.\\w+|\\[[^\\]]+\\])*`, 'gm'), function(match,_,p,code){
+                        let m = Array.from(match.match(/(?<=\.|^)\w+|\[[^\]]+\]/g)??[]);
+                        let e = code.slice(p+match.length).trim();
+                        if (m.length == 0) return '';
+                        m[0] = 'env';
+                        if (e[0] == '=')
+                            return m.reduce((p,c,n)=>`${n!=m.length-1?'(await ':''}${p}${c[0]=='['?'':'.'}${c}${n!=m.length-1?')':''}`);
+                        return 'await '+m.reduce((p,c)=>`(await ${p}${c[0]=='['?'':'.'}${c})`);
+                    });
+                    return s;
+                })()}
+            })();
         })();
     `;
 }

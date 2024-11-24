@@ -66,12 +66,49 @@ $time: .5s
     -webkit-text-fill-color: transparent
     -webkit-background-clip: text
 
-/* ----- SELECTORS ----- */
+/* ----- ANIMATIONS ----- */
+@keyframes ripple
+    from
+        width: 0
+        height: 0
+        margin-left: 0
+        margin-top: 0
+        opacity: 0.2
+    to
+        width: $unit*2
+        height: $unit*2
+        margin-left: -$unit
+        margin-top: -$unit
+        opacity: 0
+@keyframes rotating
+    from
+        transform: rotate(0deg)
+    to
+        transform: rotate(360deg)
+
+/* ----- ELEMENTS ----- */
 *
     font-family: sans
     box-sizing: border-box
     &:focus
         outline: none
+::-webkit-scrollbar
+    width: $unit/10
+::-webkit-scrollbar-track
+    background-color: mix(#fff, $dark, 8%)
+::-webkit-scrollbar-thumb
+    background-color: $mai0
+html,body
+    height: 100%
+body
+    background-image: linear-gradient(135deg, $dark, mix($dark, $sec1, 95%))
+    display: grid
+    grid-template-rows: $unit/5 auto $unit/5
+    grid-template-columns: $unit $unit*4 $unit/5 auto $unit/5
+    margin: 0
+    overflow: hidden
+
+/* ----- CLASSES ----- */
 .ripple
     grid-area: 1 / 1
     position: absolute
@@ -82,15 +119,169 @@ $time: .5s
     opacity: 0.2
     z-index: -1
     animation: ripple $time
-html,body
-    height: 100%
-body
-    background-image: linear-gradient(135deg, $dark, mix($dark, $sec1, 95%))
-    display: grid
-    grid-template-rows: $unit/5 auto $unit/5
-    grid-template-columns: $unit $unit*4 $unit/5 auto $unit/5
-    margin: 0
-    overflow: hidden
+body>.side
+    display: none
+    grid-template-columns: auto
+    grid-template-rows: 3*$unit/5 auto
+    grid-area: 2 / 2
+    background-color: mix(#fff, $dark, 8%)
+    border-radius: $unit/5
+    overflow: visible
+    &>.head
+        grid-area: 1 / 1
+        margin: auto
+        width: calc(100% - $unit/5)
+        display: flex
+        height: 2*$unit/5
+        border: 2px solid mix($dark, #fff, 80%)
+        border-radius: $unit/5
+        button
+            position: relative
+            flex-grow: 1
+            border: 0
+            background: none
+            color: $text
+            text:first-child
+                font-family: fa
+            text:last-child
+                @include hover_text
+                left: 50%
+                top: 3*$unit/5
+                transform: translateX(-50%)
+            &:not(:first-child)::after
+                content: ''
+                position: absolute
+                left: 0
+                top: $unit/20
+                width: 100%
+                height: calc(100% - $unit/10)
+                border-left: 2px solid mix($dark, #fff, 85%)
+                pointer-events: none
+            &:not(:disabled):hover text:last-child
+                opacity: 1
+            &:disabled
+                color: mix($dark, $text, 50%)
+                cursor: default
+        input
+            background: none
+            border: 0
+            color: $text
+            padding: 0 $unit/10
+            flex-grow: 1
+            flex-shrink: 1
+            flex-basis: 0
+            min-width: 0
+        &.text
+            button
+                flex-grow: 0
+                flex-basis: 2*$unit/5
+    &>.body
+        grid-area: 2 / 1
+        display: flex
+        flex-direction: column
+        overflow: hidden scroll
+        opacity: 1
+        transition: opacity $time
+        &>div
+            position: relative
+            display: grid
+            grid-template-rows: 3*$unit/8 $unit/8 $unit/2
+            grid-template-columns: 3*$unit/8 $unit/8 3*$unit/8 $unit/8 auto
+            flex: 0 0 $unit
+            padding: $unit/10
+            background-image: linear-gradient(mix(#fff, $dark, 8%), mix(#fff, $dark, 8%))
+            margin-top: -2px
+            transition: background $time, background $time
+            img
+                grid-area: 1 / 1 / span 3 /span 4
+                width: 100%
+                height: 100%
+                pointer-events: none
+                opacity: 0
+                transition: opacity $time
+                border-radius: 50%
+                padding: $unit/10
+                &.loaded
+                    opacity: 1
+                &:not(.loaded) + text
+                    grid-area: 1 / 1 / span 1 / span 2
+            text
+                grid-area: 1 / 5 / span 2
+                text-align: left
+                line-height: 3*$unit/5
+                color: $text
+                pointer-events: none
+                text-overflow: ellipsis
+                white-space: nowrap
+                overflow: hidden
+            span
+                grid-area: 3 / 5
+                color: $text
+                text-overflow: ellipsis
+                white-space: nowrap
+                overflow: hidden
+                font-size: 75%
+                opacity: .75
+                line-height: 2*$unit/5
+            input
+                grid-area: 3 / 1 / span 1 / span 5
+                border: 0
+                border-radius: $unit/10
+                margin: $unit/20
+                margin-top: 0
+                padding: 0 $unit/10
+                background-color: mix(#fff, $dark, 15%)
+                color: $text
+                box-shadow: 0 0 0 mix(#fff, $dark, 8%)
+                transition: box-shadow $time
+            input + img
+                grid-area: 1 / 1 / span 2 / span 2
+                & + text
+                    grid-area: 1 / 3 / span 2 / span 3
+                    line-height: $unit/2
+            &::after
+                content: ''
+                position: absolute
+                left: $unit/5
+                top: 0
+                width: calc(100% - 2*$unit/5)
+                height: 100%
+                border: 0 solid mix($text, $dark, 15%)
+                border-top-width: 2px
+                pointer-events: none
+            &:not(.on):hover
+                background-color: mix(#fff, $dark, 12%)
+                input
+                    box-shadow: 0 0 $unit/5 mix(#fff, $dark, 8%)
+            &.on
+                background-image: linear-gradient(mix(mix(#fff, $dark, 8%), $sec0, 40%), mix(mix(#fff, $dark, 8%), $sec1, 40%))
+                &::after, &+div::after
+                    display: none
+                text, span
+                    color: $dark
+                input
+                background-color: $text
+                color: $dark
+            background-color: linear-gradient(mix(#fff, $dark, 15%), mix(#fff, $dark, 15%))
+        &::-webkit-scrollbar
+            display: none
+    &.loading
+        position: relative
+        font-family: fa
+        &::after
+            content: '\f110'
+            position: absolute
+            left: 50%
+            top: $unit
+            transform: translate(-50%, 0)
+            opacity: 0.5
+            color: $text
+            animation: rotating $time*4 linear infinite
+            font-size: 200%
+        &>.body
+            opacity: 0
+
+/* ----- SECTIONS ----- */
 #nav
     position: relative
     grid-area: 1 / 1 / span 3
@@ -148,143 +339,6 @@ body
         width: 100%
         height: calc(100% - 2*$unit/5)
         pointer-events: none
-body>.side
-    grid-area: 2 / 2
-    background-color: mix(#fff, $dark, 8%)
-    border-radius: $unit/5
-    overflow: hidden
-    flex-direction: column
-    display: none
-    div:not(.options)
-        position: relative
-        display: grid
-        grid-template-rows: 3*$unit/8 $unit/16 auto
-        grid-template-columns: 3*$unit/8 $unit/16 calc(100% - $unit/2)
-        flex: 0 0 $unit
-        padding: $unit/10
-        background-image: linear-gradient(mix(#fff, $dark, 8%), mix(#fff, $dark, 8%))
-        transition: background $time, background $time
-        margin-top: -2px
-        img
-            grid-area: 1 / 1
-            width: 100%
-            height: 100%
-            pointer-events: none
-            opacity: 0
-            transition: opacity $time
-            &.loaded
-                opacity: 1
-            &:not(.loaded) + text
-                grid-area: 1 / 1 / span 1 / span 2
-        text
-            grid-area: 1 / 3
-            text-align: left
-            line-height: 3*$unit/8
-            color: $text
-            pointer-events: none
-            text-overflow: ellipsis
-            white-space: nowrap
-            overflow: hidden
-        span
-            grid-area: 2 / 3
-            color: $text
-            text-overflow: ellipsis
-            white-space: nowrap
-            overflow: hidden
-            font-size: 75%
-            opacity: .75
-        input
-            grid-area: 3 / 1 / span 1 / span 3
-            border: 0
-            border-radius: $unit/10
-            margin: $unit/20
-            margin-top: 0
-            padding: 0 $unit/10
-            background-color: mix(#fff, $dark, 15%)
-            color: $text
-            box-shadow: 0 0 0 mix(#fff, $dark, 8%)
-            transition: box-shadow $time
-        &::after
-            content: ''
-            position: absolute
-            left: $unit/5
-            top: 0
-            width: calc(100% - 2*$unit/5)
-            height: 100%
-            border: 0 solid mix($text, $dark, 15%)
-            border-top-width: 2px
-            pointer-events: none
-        &:not(.on):hover
-            background-color: mix(#fff, $dark, 12%)
-            input
-                box-shadow: 0 0 $unit/5 mix(#fff, $dark, 8%)
-        &.on
-            background-image: linear-gradient(mix(mix(#fff, $dark, 8%), $sec0, 40%), mix(mix(#fff, $dark, 8%), $sec1, 40%))
-            &::after, &+div::after
-                display: none
-            text
-                color: $dark
-            input
-                background-color: $text
-                color: $dark
-    div.options
-        margin: $unit/5
-        display: flex
-        height: 2*$unit/5
-        border: 2px solid mix($dark, #fff, 80%)
-        border-radius: $unit/5
-        button
-            position: relative
-            flex-grow: 1
-            border: 0
-            background: none
-            color: $text
-            text:first-child
-                font-family: fa
-            text:last-child
-                @include hover_text
-                left: 50%
-                top: 3*$unit/5
-                transform: translateX(-50%)
-            &:not(:first-child)::after
-                content: ''
-                position: absolute
-                left: 0
-                top: $unit/20
-                width: 100%
-                height: calc(100% - $unit/10)
-                border-left: 2px solid mix($dark, #fff, 85%)
-                pointer-events: none
-            &:not(:disabled):hover text:last-child
-                opacity: 1
-            &:disabled
-                color: mix($dark, $text, 50%)
-                cursor: default
-        input
-            background: none
-            border: 0
-            color: $text
-            padding: 0 $unit/10
-            flex-grow: 1
-            flex-shrink: 1
-            flex-basis: 0
-            min-width: 0
-        &.text
-            button
-                flex-grow: 0
-                flex-basis: 2*$unit/5
-
-.side.chat>div:not(.options)
-    grid-template-columns: $unit 0 calc(100% - $unit)
-    img
-        grid-area: 1 / 1 / span 3
-        border-radius: 50%
-        margin: $unit/10
-        width: calc(100% - $unit/5)
-        height: calc(100% - $unit/5)
-    span
-        grid-area: 3 / 3
-
 #browser
     display: none
     grid-area: 2 / 4
@@ -327,6 +381,7 @@ body>.side
     grid-area: 2 / 4
     border: 2px solid mix(#fff, $dark, 8%)
     border-radius: $unit/5
+    overflow: hidden
     .body
         position: absolute
         left: 0
@@ -335,23 +390,25 @@ body>.side
         height: calc(100% - $unit)
         display: flex
         flex-direction: column
-        padding-top: $unit
         overflow: hidden auto
+        margin: 0 0 3*$unit/5 0
         &>div
             display: flex
+            max-width: 100%
             flex-direction: column
             position: relative
-            padding: 0 0 0 $unit
+            padding: 0 $unit/5 0 $unit
             justify-content: center
             align-items: start
-            min-height: $unit
             &>img
-                position: absolute
-                left: $unit/5
-                bottom: $unit/5
+                position: sticky
+                top: $unit/10
                 width: 3*$unit/5
                 height: 3*$unit/5
                 border-radius: 50%
+                margin-left: -4*$unit/5
+                &~div:not(.translated) 
+                    margin-top: -2*$unit/5
             &>text
                 @include hover_text
                 top: $unit/2
@@ -360,21 +417,34 @@ body>.side
                 color: $text
             &>img:hover+text
                 opacity: 1
-            &>div
+            &>div:not(.translated)
                 margin: $unit/10
                 padding: $unit/10
                 color: $dark
                 position: relative
+                max-width: 100%
+                z-index: -1
+                img
+                    max-width: 100%
+                a
+                    color: $mai1
+                &.unsent
+                    opacity: .5
+                    &>*
+                        opacity: .5
                 &::before
                     content: ''
+                    position: sticky 
+                    display: inline-block
                     width: $unit/5
                     height: $unit/5
-                    position: absolute 
+                    top: 3*$unit/10
                     background-color: $text
-                    z-index: 0
+                    float: left
                     transform: rotate(45deg)
-                    left: -$unit/10
-                    top: 3*$unit/20
+                    margin-right: -$unit/16
+                    margin-left: -3*$unit/16
+                    z-index: -1
                 &::after
                     content: ''
                     position: absolute
@@ -384,18 +454,7 @@ body>.side
                     height: 100%
                     border-radius: $unit/10
                     background-color: $text
-                    z-index: -1
                     box-shadow: 0 0 $unit/10 $dark
-                &>div.translated
-                    position: absolute
-                    left: 0
-                    top: calc(100% - $unit/5)
-                    width: 100%
-                    padding: $unit/10
-                    padding-top: 3*$unit/10
-                    border-radius: $unit/10
-                    font-size: 75%
-                    background-image: linear-gradient(135deg, $sec0, $sec1)
                     z-index: -2
                 &>text
                     position: relative
@@ -456,9 +515,42 @@ body>.side
                         &>div
                             opacity: 1
                             pointer-events: auto
-
-            
-
+            &>div.translated
+                position: relative
+                margin: $unit/10
+                padding: $unit/10
+                margin-top: -2*$unit/10
+                padding-top: 2*$unit/10
+                border-radius: $unit/10
+                font-size: 75%
+                background-image: linear-gradient(135deg, $sec0, $sec1)
+                color: $dark
+                max-width: 100%
+                z-index: -2
+                &.loading
+                    font-family: fa
+                    width: $unit/2
+                    height: 3*$unit/5
+                    &::after
+                        content: '\f110'
+                        left: calc(50% - $unit/8)
+                        top: calc(50% - 3*$unit/32)
+                        position: absolute
+                        opacity: 0.5
+                        animation: rotating $time*4 linear infinite
+                        font-weight: 900
+                        font-size: 150%
+            &.self
+                align-items: end
+                &>div::after
+                    background-image: linear-gradient(135deg, $mai0, $mai1)
+                &>div::before
+                    left: 100%
+                    margin-right: -3*$unit/16
+                    margin-left: -$unit/16
+                    background-color: $mai1
+                    z-index: -3
+        
     .foot
         position: absolute
         left: 0
@@ -467,41 +559,22 @@ body>.side
         height: $unit
         background-color: mix(#fff, $dark, 8%)
 
+/* ----- PAGES ----- */
 body
     &.browser
         &>.side.browser, #browser
-            display: flex
+            display: grid
         #nav>button:nth-child(2) text:first-child
             @include nav_tab_on
     &.chats
         &>.side.chat
-            display: flex
+            display: grid
         #chat
             display: grid
         #nav>button:nth-child(3) text:first-child
             @include nav_tab_on
 
-
-@keyframes ripple
-    from
-        width: 0
-        height: 0
-        margin-left: 0
-        margin-top: 0
-        opacity: 0.2
-    to
-        width: $unit*2
-        height: $unit*2
-        margin-left: -$unit
-        margin-top: -$unit
-        opacity: 0
-@keyframes rotating
-    from
-        transform: rotate(0deg)
-    to
-        transform: rotate(360deg)
-
-
+/* ----- DYNAMIC RESIZING ----- */
 @media only screen and (orientation: portrait) and (orientation: landscape)
     body
         grid-template-rows: $unit/5 4*$unit/5 $unit/5 auto $unit/5 $unit
@@ -524,7 +597,7 @@ body
             border-top-width: 2px
     body>.side
         flex-direction: column
-        div:not(.options)
+        div.body>div
             flex-grow: 1
     #browser
         grid-area: 4 / 2
