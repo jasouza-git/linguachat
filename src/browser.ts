@@ -1,3 +1,4 @@
+// tsc {ts file} --outDir {folder} --watch --target ES2017 --module nodenext --moduleResolution nodenext
 import { app, BrowserWindow, WebContentsView, ipcMain, IpcMainEvent, IpcMain, NavigationEntry } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';

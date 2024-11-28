@@ -1,0 +1,616 @@
+/* ----- CONFIGURATION ----- */
+$unit: 65px
+$dark: #141314
+$sec0: #73EC8B
+$sec1: #15B392
+$mai0: #51ADCF
+$mai1: #0278AE
+$text: #cac6c6
+$time: .5s
+
+/* ----- FONT FAMILY ----- */
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 100
+    font-display: block
+    src: url(fonts/fa-thin-100.woff2) format('woff2')
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 300
+    font-display: block
+    src: url(fonts/fa-light-300.woff2) format('woff2')
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 400
+    font-display: block
+    src: url(fonts/fa-regular-400.woff2) format('woff2')
+    unicode-range: U+F000-F8FF
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 400
+    font-display: block
+    src: url(fonts/fa-brands-400.woff2) format('woff2')
+    unicode-range: U+F000-F8FF
+@font-face
+    font-family: fa
+    font-style: normal
+    font-weight: 900
+    font-display: block
+    src: url(fonts/fa-solid-900.woff2) format('woff2')
+@font-face
+    font-family: sans
+    font-style: normal
+    font-weight: 900
+    font-display: block
+    src: url(fonts/sans.woff2) format('woff2')
+
+/* ----- MIXINS ----- */
+@mixin hover_text($pos:absolute)
+    position: $pos
+    opacity: 0
+    background-color: mix($dark, #fff, 80%)
+    padding: $unit/20 $unit/10
+    border-radius: $unit/5
+    text-align: left
+    transition: opacity $time
+    pointer-events: none
+    box-shadow: 0 0 $unit/5 mix(#fff, $dark, 8%)
+    white-space: nowrap
+    z-index: 1
+@mixin nav_tab_on
+    background: linear-gradient(135deg, $sec0, $sec1)
+    -webkit-text-fill-color: transparent
+    -webkit-background-clip: text
+
+/* ----- ANIMATIONS ----- */
+@keyframes ripple
+    from
+        width: 0
+        height: 0
+        margin-left: 0
+        margin-top: 0
+        opacity: 0.2
+    to
+        width: $unit*2
+        height: $unit*2
+        margin-left: -$unit
+        margin-top: -$unit
+        opacity: 0
+@keyframes rotating
+    from
+        transform: rotate(0deg)
+    to
+        transform: rotate(360deg)
+
+/* ----- ELEMENTS ----- */
+*
+    font-family: sans
+    box-sizing: border-box
+    &:focus
+        outline: none
+::-webkit-scrollbar
+    width: $unit/10
+::-webkit-scrollbar-track
+    background-color: mix(#fff, $dark, 8%)
+::-webkit-scrollbar-thumb
+    background-color: $mai0
+html,body
+    height: 100%
+body
+    background-image: linear-gradient(135deg, $dark, mix($dark, $sec1, 95%))
+    display: grid
+    grid-template-rows: $unit/5 calc(100% - 2*$unit/5) $unit/5
+    grid-template-columns: $unit $unit*4 $unit/5 calc(100% - 27*$unit/5) $unit/5
+    margin: 0
+    overflow: hidden
+
+/* ----- CLASSES ----- */
+.ripple
+    grid-area: 1 / 1
+    position: absolute
+    width: 0
+    height: 0
+    border-radius: 50%
+    background-color: white
+    opacity: 0.2
+    z-index: -1
+    animation: ripple $time
+body>.side
+    display: none
+    grid-template-columns: auto
+    grid-template-rows: 3*$unit/5 auto
+    grid-area: 2 / 2
+    background-color: mix(#fff, $dark, 8%)
+    border-radius: $unit/5
+    overflow: visible
+    &>.head
+        grid-area: 1 / 1
+        margin: auto
+        width: calc(100% - $unit/5)
+        display: flex
+        height: 2*$unit/5
+        border: 2px solid mix($dark, #fff, 80%)
+        border-radius: $unit/5
+        button
+            position: relative
+            flex-grow: 1
+            border: 0
+            background: none
+            color: $text
+            text:first-child
+                font-family: fa
+            text:last-child
+                @include hover_text
+                left: 50%
+                top: 3*$unit/5
+                transform: translateX(-50%)
+            &:not(:first-child)::after
+                content: ''
+                position: absolute
+                left: 0
+                top: $unit/20
+                width: 100%
+                height: calc(100% - $unit/10)
+                border-left: 2px solid mix($dark, #fff, 85%)
+                pointer-events: none
+            &:not(:disabled):hover text:last-child
+                opacity: 1
+            &:disabled
+                color: mix($dark, $text, 50%)
+                cursor: default
+        input
+            background: none
+            border: 0
+            color: $text
+            padding: 0 $unit/10
+            flex-grow: 1
+            flex-shrink: 1
+            flex-basis: 0
+            min-width: 0
+        &.text
+            button
+                flex-grow: 0
+                flex-basis: 2*$unit/5
+    &>.body
+        grid-area: 2 / 1
+        display: flex
+        flex-direction: column
+        overflow: hidden scroll
+        opacity: 1
+        transition: opacity $time
+        &>div
+            position: relative
+            display: grid
+            grid-template-rows: 3*$unit/8 $unit/8 $unit/2
+            grid-template-columns: 3*$unit/8 $unit/8 3*$unit/8 $unit/8 auto
+            flex: 0 0 $unit
+            padding: $unit/10
+            background-image: mix(#fff, $dark, 8%)
+            margin-top: -2px
+            transition: background $time, background $time
+            img
+                grid-area: 1 / 1 / span 3 /span 4
+                width: 100%
+                height: 100%
+                pointer-events: none
+                opacity: 0
+                transition: opacity $time
+                border-radius: 50%
+                padding: $unit/10
+                &.loaded
+                    opacity: 1
+                &:not(.loaded) + text
+                    grid-area: 1 / 1 / span 1 / span 2
+            text
+                grid-area: 1 / 5 / span 2
+                text-align: left
+                line-height: 3*$unit/5
+                color: $text
+                pointer-events: none
+                text-overflow: ellipsis
+                white-space: nowrap
+                overflow: hidden
+            span
+                grid-area: 3 / 5
+                color: $text
+                text-overflow: ellipsis
+                white-space: nowrap
+                overflow: hidden
+                font-size: 75%
+                opacity: .75
+                line-height: 2*$unit/5
+            input
+                grid-area: 3 / 1 / span 1 / span 5
+                border: 0
+                border-radius: $unit/10
+                margin: $unit/20
+                margin-top: 0
+                padding: 0 $unit/10
+                background-color: mix(#fff, $dark, 15%)
+                color: $text
+                box-shadow: 0 0 0 3
+                transition: box-shadow $time
+            input + img
+                grid-area: 1 / 1 / span 2 / span 2
+                & + text
+                    grid-area: 1 / 3 / span 2 / span 3
+                    line-height: $unit/2
+            &::after
+                content: ''
+                position: absolute
+                left: $unit/5
+                top: 0
+                width: calc(100% - 2*$unit/5)
+                height: 100%
+                border: 0 solid mix($text, $dark, 15%)
+                border-top-width: 2px
+                pointer-events: none
+            &:not(.on):hover
+                background-color: mix(#fff, $dark, 12%)
+                input
+                    box-shadow: 0 0 $unit/5 mix(#fff, $dark, 8%)
+            &.on
+                background-image: linear-gradient(mix(mix(#fff, $dark, 8%), $sec0, 40%), mix(mix(#fff, $dark, 8%), $sec1, 40%))
+                &::after, &+div::after
+                    display: none
+                text, span
+                    color: $dark
+                input
+                background-color: $text
+                color: $dark
+            background-color: linear-gradient(mix(#fff, $dark, 15%), mix(#fff, $dark, 15%))
+        &::-webkit-scrollbar
+            display: none
+    &.loading
+        position: relative
+        font-family: fa
+        &::after
+            content: '\f110'
+            position: absolute
+            left: 50%
+            top: $unit
+            transform: translate(-50%, -50%)
+            opacity: 0.5
+            color: $text
+            animation: rotating $time*4 linear infinite
+            font-size: 200%
+            text-align: center
+        &>.body
+            opacity: 0
+
+/* ----- SECTIONS ----- */
+#nav
+    position: relative
+    grid-area: 1 / 1 / span 3
+    display: flex
+    flex-direction: column
+    button
+        border: 0
+        background: none
+        padding: $unit/10
+        display: flex
+        flex-direction: column
+        color: $text
+        justify-content: center
+        align-items: center
+        flex: 0 0 4*$unit/5
+        &:not(:first-child)
+            flex-grow: 0
+            position: relative
+        &:first-child
+            border: 0 solid mix($text, $dark, 10%)
+            margin: 0 $unit/5
+            padding: $unit/5 0
+            border-width: 0 0 2px 0
+            img
+                width: 3*$unit/5
+                height: 3*$unit/5
+        text:first-child
+            font-weight: 900
+            font-family: fa
+            font-size: 30px
+        text:last-child
+            font-weight: 100
+            opacity: .5
+            font-size: 12px
+        &.on text:first-child
+            background: linear-gradient(135deg, $sec0, $sec1)
+            -webkit-text-fill-color: transparent
+            -webkit-background-clip: text
+
+    .ripples
+        position: absolute
+        left: 0
+        top: 0
+        width: 100%
+        height: 100%
+        overflow: hidden
+        z-index: -1
+        pointer-events: none
+    &::after
+        content: ''
+        position: absolute
+        left: 0
+        top: $unit/5
+        border: 0 solid mix(#fff, $dark, 25%)
+        width: 100%
+        height: calc(100% - 2*$unit/5)
+        pointer-events: none
+#browser
+    display: none
+    grid-area: 2 / 4
+    border: 2px solid mix(#fff, $dark, 8%)
+    justify-content: center
+    align-items: center
+    flex-direction: column
+    text.icon
+        font-family: fa
+        color: mix(#fff, $dark, 8%)
+        font-size: $unit
+        &::after
+            content: '\f08e'
+    text.text
+        color: mix(#fff, $dark, 8%)
+        font-size: 3*$unit/8
+        line-height: $unit
+        &::after
+            content: 'new tab'
+    &.loading
+        text.icon
+            animation: rotating $time*4 linear infinite
+            &::after
+                content: '\f110'
+        text.text::after
+            content: 'loading...'
+    &.e404
+        text.icon::after
+                content: '\e542'
+        text.text::after
+            content: 'Error 404: Not Found'
+    &.error
+        text.icon::after
+                content: '\f4bb'
+        text.text::after
+            content: 'Unknown Error'
+#chat
+    position: relative
+    display: none
+    grid-area: 2 / 4
+    border: 2px solid mix(#fff, $dark, 8%)
+    border-radius: $unit/5
+    overflow: hidden
+    .body
+        position: absolute
+        left: 0
+        top: 0
+        width: 100%
+        height: calc(100% - $unit)
+        display: flex
+        flex-direction: column
+        overflow: hidden auto
+        margin: 0 0 3*$unit/5 0
+        &>div
+            display: flex
+            max-width: 100%
+            flex-direction: column
+            position: relative
+            padding: 0 $unit/5 0 $unit
+            justify-content: center
+            align-items: start
+            &>img
+                position: sticky
+                top: $unit/10
+                width: 3*$unit/5
+                height: 3*$unit/5
+                border-radius: 50%
+                margin-left: -4*$unit/5
+                &~div:not(.translated) 
+                    margin-top: -2*$unit/5
+            &>text
+                @include hover_text(sticky)
+                top: 2*$unit/5
+                left: 4*$unit/5
+                transform: translate(0, -50%)
+                color: $text
+                margin-top: -$unit/5
+                margin-bottom: -$unit/5
+            &>img:hover+text
+                opacity: 1
+            &>div:not(.translated)
+                margin: $unit/10
+                padding: $unit/10
+                color: $dark
+                position: relative
+                max-width: 100%
+                z-index: -1
+                img
+                    max-width: 100%
+                a
+                    color: $mai1
+                &.unsent
+                    opacity: .5
+                    &>*
+                        opacity: .5
+                &::before
+                    content: ''
+                    position: sticky 
+                    display: inline-block
+                    width: $unit/5
+                    height: $unit/5
+                    top: 3*$unit/10
+                    background-color: $text
+                    float: left
+                    transform: rotate(45deg)
+                    margin-right: -$unit/16
+                    margin-left: -3*$unit/16
+                    z-index: -1
+                &::after
+                    content: ''
+                    position: absolute
+                    left: 0
+                    top: 0
+                    width: 100%
+                    height: 100%
+                    border-radius: $unit/10
+                    background-color: $text
+                    box-shadow: 0 0 $unit/10 $dark
+                    z-index: -2
+                &>text
+                    position: relative
+                    border: 1px solid mix($text, $dark, 95%)
+                    background-color: $text
+                    border-radius: $unit/10
+                    cursor: pointer
+                    &>div
+                        position: absolute
+                        top: -$unit/10
+                        left: 50%
+                        width: $unit*3
+                        z-index: 1
+                        transform: translate(-50%, -100%)
+                        opacity: 0
+                        pointer-events: none
+                        transition: opacity $time
+                        h1
+                            margin: 0
+                            font-size: 100%
+                            text-align: center
+                            i
+                                opacity: .8
+                        h2
+                            margin: 0
+                            font-size: 75%
+                            text-align: center
+                            font-style: italic
+                            opacity: .75
+                        p
+                            margin: $unit/10
+                            font-size: 75%
+                        &::before
+                            content: ''
+                            position: absolute
+                            left: 50%
+                            bottom: -$unit/5
+                            width: $unit/5
+                            height: $unit/5
+                            background: $mai1
+                            transform: translate(-50%, -50%) rotate(45deg)
+                            box-shadow: 0 0 $unit/10 $dark
+                            z-index: -2
+                        &::after
+                            content: ''
+                            position: absolute
+                            left: 0
+                            top: 0
+                            width: 100%
+                            height: 100%
+                            background-image: linear-gradient(135deg, $mai0, $mai1)
+                            border-radius: $unit/5
+                            box-shadow: 0 0 $unit/10 $dark
+                            z-index: -1
+                    &:hover
+                        border-color: mix($text, $dark, 90%)
+                        background-color: mix($text, $dark, 90%)
+                        &>div
+                            opacity: 1
+                            pointer-events: auto
+            &>div.translated
+                position: relative
+                margin: $unit/10
+                padding: $unit/10
+                margin-top: -2*$unit/10
+                padding-top: 2*$unit/10
+                border-radius: $unit/10
+                font-size: 75%
+                background-image: linear-gradient(135deg, $sec0, $sec1)
+                color: $dark
+                max-width: 100%
+                z-index: -2
+                &.loading
+                    font-family: fa
+                    width: $unit/2
+                    height: 3*$unit/5
+                    &::after
+                        content: '\f110'
+                        left: calc(50% - $unit/8)
+                        top: calc(50% - 3*$unit/32)
+                        position: absolute
+                        opacity: 0.5
+                        animation: rotating $time*4 linear infinite
+                        font-weight: 900
+                        font-size: 150%
+            &.self
+                align-items: end
+                &>div::after
+                    background-image: linear-gradient(135deg, $mai0, $mai1)
+                &>div::before
+                    left: 100%
+                    margin-right: -3*$unit/16
+                    margin-left: -$unit/16
+                    background-color: $mai1
+                    z-index: -3
+        
+    .foot
+        position: absolute
+        left: 0
+        bottom: 0
+        width: 100%
+        height: $unit
+        background-color: mix(#fff, $dark, 8%)
+
+/* ----- PAGES ----- */
+body
+    &.browser
+        &>.side.browser, #browser
+            display: grid
+        #nav>button:nth-child(2) text:first-child
+            @include nav_tab_on
+    &.chats
+        &>.side.chat
+            display: grid
+        #chat
+            display: grid
+        #nav>button:nth-child(3) text:first-child
+            @include nav_tab_on
+
+/* ----- DYNAMIC RESIZING ----- */
+@media only screen and (orientation: portrait) and (orientation: landscape)
+    body
+        grid-template-rows: $unit/5 4*$unit/5 $unit/5 auto $unit/5 $unit
+        grid-template-columns: $unit/5 auto $unit/5
+    #nav
+        grid-area: 6 / 1 / span 1 / span 3
+        flex-direction: row
+        button
+            &:not(:first-child)
+                flex-grow: 1
+            &:first-child
+                margin: $unit/5 0
+                padding: 0 $unit/5
+                border-width: 0 2px 0 0
+        &::after
+            left: $unit/5
+            top: 0
+            width: calc(100% - 2*$unit/5)
+            height: 100%
+            border-top-width: 2px
+    body>.side
+        flex-direction: column
+        div.body>div
+            flex-grow: 1
+    #browser
+        grid-area: 4 / 2
+@media only screen and (orientation: landscape)
+    #nav
+        button:not(:first-child)
+            text:last-child
+                @include hover_text
+                left: $unit*1.125
+            &:hover text:last-child
+                opacity: 1
+    button
+        cursor: pointer

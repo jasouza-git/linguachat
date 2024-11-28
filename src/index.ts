@@ -1,5 +1,119 @@
 import {Browser, client_events, client_script, events} from './browser';
 
+interface scrape {
+    /** DOM Query to match when getting group chats */
+    get_groups_q:string,
+    /** Get group chats */
+    get_groups:(page:number, doms:HTMLElement[])=>scrape_group[]
+    /** DOM Query to match when getting chats */
+    get_chats_q:string,
+    /** Get chats */
+    get_chats:(page:number, doms:HTMLElement[])=>scrape_chat[]
+}
+interface scrape_group {
+    /** URL Link to the group chat */
+    link:string,
+    /** Group chat Profile picture */
+    prof:string,
+    /** Group chat name */
+    name:string,
+    /** Preview content to the group chat */
+    prev:string,
+    /** Last active */
+    last:string,
+    /** Currently focused? */
+    on:boolean,
+}
+interface scrape_chat {
+    /** Type of chat */
+    type:string,
+    /** User of chat, null means status or from current user */
+    user:null|{name:string,prof:string,nick:string},
+    /** Content of chat in HTML */
+    data:string,
+}
+
+let scrapers:{[page:string]:scrape} = {
+    facebook: {
+        get_groups_q: '[aria-label="Chats"] [data-virtualized="false"] [role="link"]',
+        get_groups: (n,doms) => {
+            let out:scrape_group[] = [];
+            for (let d of doms) {
+                let prof = d.querySelector<HTMLImageElement>('img[referrerpolicy="origin-when-cross-origin"]');
+                let name = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>span>span');
+                let prev = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:first-child');
+                let last = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:last-child');
+                if (prof == null || name == null || prev == null || last == null) continue;
+                out.push({
+                    link: d.getAttribute('href')??'',
+                    prof: prof.src,
+                    name: name.innerText,
+                    prev: prev.innerText.replace(/\s+/g,' '),
+                    last: last.innerText.split('\n')[0],
+                    on: d.getAttribute('aria-current')=='page',
+                });
+            }
+            return out;
+        },
+        get_chats_q: '[role=main]>div>div>div>div>div>div+div>div>div>div>div>div>div>div>div>div>div>div>div [role=row]:last-child>div:first-child>div',
+        get_chats: (n,doms) => {
+            let out:scrape_chat[] = [];
+            doms = doms.slice(1).reverse();
+            var img:HTMLImageElement|null = null;
+            for (const d of doms) {
+                let main = d.querySelector(':scope>div[class]:not([role=presentation])');
+                if (main == null) {
+                    out.push({
+                        type: 'status',
+                        user: null,
+                        data: d.querySelector<HTMLDivElement>(':scope>div[class][role=presentation]>div:first-child>div:first-child')?.innerText ?? '',
+                    });
+                    continue;
+                }
+                let q:{ <T extends Element>(q: string, cont: true): T[];
+                        <T extends Element>(q: string, cont?: false): T | null;
+                } = <T extends Element>(q,cont=false) => cont ? Array.from(main.querySelectorAll<T>(`:scope>div:nth-child(2)>div:first-child${q}`)) : main.querySelector<T>(`:scope${q}`);
+                
+                img = q('>div:first-child img[style="border-radius: 50%;"]')??img;
+                let attach = q<HTMLAnchorElement>(' [aria-label^="Open Attachment, "]');
+                let type =  q('>span:first-child') ? 'unsent' :
+                            q(' [aria-label="Group audio call"]') ? 'audio call' :
+                            q(' [aria-label="Group video call"]') ? 'video call' :
+                            q(' [aria-label="Live Location"]') ? 'location' :
+                            q(' [aria-label="Audio scrubber"]') ? 'audio' :
+                            '';
+                let to_html = (dom:HTMLElement|null) => {
+                    let out = '';
+                    if (dom != null)
+                        for (const child of dom.childNodes)
+                            out += !('tagName' in child) ? (child.textContent??'').replace(/\n/g,'<br>') :
+                                child instanceof HTMLSpanElement && child.getAttribute('role') == 'gridcell' ? `<a data-link="${child.querySelector('a')?.getAttribute('href')}">${to_html(child.querySelector('a'))}</a>` :
+                                child instanceof HTMLSpanElement && child.querySelector('img') != null ? `<img src="${child.querySelector('img')?.src}"></img>` :
+                                '';
+                    return out;
+                };
+                
+                let chat = {
+                    type: type,
+                    user: q('>div:first-child')?.getAttribute('style')?.includes('--paddingEnd') && img != null ? {
+                        name: img.getAttribute('alt')??'Unknown',
+                        prof: img.getAttribute('src')??'',
+                        nick: main?.previousSibling instanceof HTMLElement ? main.previousSibling.innerText : '',
+                    } : null,
+                    data: attach != null ? `<a href="${attach.getAttribute('href')}">${attach.getAttribute('aria-label')?.slice(17)}</a>` :
+                        q(' span>[dir="auto"]',true).length ? to_html(q<HTMLElement>(' span>[dir="auto"]',true)[0]) :
+                        Array.from(q<HTMLImageElement>(' img',true)).map(i=>`<img src="${i.src}"></img>`).join(''),
+                };
+                if (out.length && out[out.length-1].user?.name == chat.user?.name && !out[out.length-1].type.length) {
+                        out[out.length-1].data = chat.data+'<br>'+out[out.length-1].data;
+                } else out.push(chat);
+            }
+            out.reverse();
+            return out;
+        },
+    }
+};
+
 let client_code = async (async_browser:Browser, events:client_events) => {
     // Variables
     let main_id = async_browser.new_win();
@@ -176,6 +290,7 @@ let client_code = async (async_browser:Browser, events:client_events) => {
         });
         let out = '';
         for (const d of chats) {
+            if (d.type == 'status') continue;
             out += /*html*/`
                 <div ${d.user == null ? 'class="self"' : ''}>
                     ${ d.user != null ? /*html*/`
@@ -382,132 +497,338 @@ let browser = new Browser({
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link rel="stylesheet" href="style.css">
         </head>
-        <body class="chats">
-            <!-- BROWSER -->
-            <div class="side browser">
-                <div class="head">
-                    ${[ 'f08e:New Tab',
-                        'f060:Back',
-                        'f021:Refresh',
-                        'f061:Next',
-                        'f00d:Close'
-                    ].map(x=>x.split(':'))
-                    .map((x,n) => /*html*/`
-                        <button ${n?'disabled':''}>
-                            <text>&#x${x[0]};</text>
-                            <text>${x[1]}</text>
-                        </button>
-                    `).join('')}
-                </div>
-                <div class="body"></div>
-            </div>
-            <div id="browser">
-                <text class="icon"></text>
-                <text class="text"></text>
-            </div>
-            <!-- CHAT -->
-            <div class="side chat">
-                <div class="head text">
-                    <button><text>&#xf09a;</text><text>Facebook</text></button>
-                    <input placeholder="Search:"></input>
-                    <button><text>&#xf002;</text><text>Search</text></button>
-                </div>
-                <div class="body">
-                    <div class="on">
-                        <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t1.15752-9/454892547_816538394027707_498233134312495632_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=106&ccb=1-7&_nc_sid=b70caf&_nc_eui2=AeHpTvTtv8ax3aTPDX__GfTgAhb2OurKVicCFvY66spWJ7GaUQamz-E4H11S2BvOvTqae5IGQZE9m_6_8ey2LqZG&_nc_ohc=F0dEX2eGH3QQ7kNvgHWhrSr&_nc_zt=23&_nc_ht=scontent.fceb2-1.fna&oh=03_Q7cD1QFDHorcJ6hEgSDWaw145lfw4y_kqqWAJIHJzCXaZnkwkA&oe=67609FDB"></img>
-                        <text>Homo Genius Superior & The Peaceful League Of Racists, Fallen Survivors, Yakuza Dawgs, & Fussy Catz</text>
-                    </div>
-                    <div>
-                        <img class="loaded" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/407378661_2174543962886331_2086404682384341131_n.jpg?stp=c3.10.941.940a_dst-jpg_s100x100&_nc_cat=108&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEjKfUMMIk_Zh2mWHHkXnR9fXMi4rAeR8N9cyLisB5Hw1YtRmDdMtupnMpe8yoYPkPm9riij83_yjCWduqL8lYx&_nc_ohc=eW1bkwxT4oAQ7kNvgGAfYMo&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AQpnyo4lMwOZEjzzppSftfZ&oh=00_AYBHmTub4cgavuH8JfAoeTgkfhYbYvjJhuJwdE4hGFPwnA&oe=673EEDEE"></img>
-                        <text>Jolex Salmo</text>
-                    </div>
-                </div>
-            </div>
-            <div id="chat">
-                <div class="body">
-                    <div>
-                        <img src="https://scontent.fmnl13-3.fna.fbcdn.net/v/t39.30808-1/409185686_2239831092888478_7614923379883250579_n.jpg?stp=dst-jpg_s100x100&_nc_cat=105&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeGdegm0PrnBNRXplKMiKwzM14mB99I6lg_XiYH30jqWD4urKrpgA3PEG8PE3QCa_FGvL-CvVfwuVi0zVHpCPzt3&_nc_ohc=0SWzcc56-RcQ7kNvgH-ifp1&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fmnl13-3.fna&_nc_gid=ASlz81YPqa-OBMiPnUNYNzc&oh=00_AYAxmGieYbzimJbHSxTmS9E-V3wK3JdDEsj0fJXywNKzGA&oe=673F36BB"></img>
-                        <text>Noli-von</text>
-                        <div>
-                            <text>gin
-                                <div>
-                                    <h1>gin <i>(already)</i></h1>
-                                    <h2>Particle - Filipino (Illongo)</h2>
-                                    <p>Indicates past or completed action</p>
-                                </div>
-                            </text>
-                            <text>ss
-                                <div>
-                                    <h1>ss <i>(screenshot)</i></h1>
-                                    <h2>Abbreviation</h2>
-                                    <p>An abbreviation for 'screenshot'.</p>
-                                </div>
-                            </text>
-                            <text>ya
-                                <div>
-                                    <h1>ya <i>(it)</i></h1>
-                                    <h2>Pronoun - Filipino (Ilonggo)</h2>
-                                    <p>Refers to a subject or object.</p>
-                                </div>
-                            </text>
-                            <text>na
-                                <div>
-                                    <h1>na <i>(now)</i></h1>
-                                    <h2>Particle - Filipino (Ilonggo)</h2>
-                                    <p>Indicates immediacy or completion.</p>
-                                </div>
-                            </text>
-                            <text>nga
-                                <div>
-                                    <h1>nga <i>(that)</i></h1>
-                                    <h2>Particle - Filipino (Ilonggo)</h2>
-                                    <p>Used to emphasize or point to something specific.</p>
-                                </div>
-                            </text>
-                            <text>way
-                                <div>
-                                    <h1>way <i>(none)</i></h1>
-                                    <h2>Noun - Filipino (Ilonggo)</h2>
-                                    <p>Indicates absence or lack of something.</p>
-                                </div>
-                            </text>
-                            <text>ko
-                                <div>
-                                    <h1>ko <i>(me)</i></h1>
-                                    <h2>Pronoun - Filipino (Ilonggo)</h2>
-                                    <p>First person singular possessive pronoun.</p>
-                                </div>
-                            </text>
-                        </div>
-                        <div class="translated loading">
-                            <!--He already screenshot without me-->
-                        </div>
-                    </div>
-                </div>
-                <div class="foot"></div>
-            </div>
-            <!-- MAIN -->
-            <div id="nav">
+        <body class="">
+            <div id="tabs">
                 <button>
                     <img src="logo_gray.png"></img>
+                    <text>Home</text>
                 </button>
-                ${[ 'e60e:Browser',
-                    'e1de:Chats',
-                    'e0c0:Dictionary',
-                    'f0c0:Accounts',
-                    'f085:Settings'
-                ].map(x=>x.split(':'))
-                .map((x,n) => /*html*/`
-                    <button>
-                        <text>&#x${x[0]};</text>
-                        <text>${x[1]}</text>
+                <div>
+                    <button class="group">
+                        <span>&#xf549;</span>
+                        <text>School</text>
                     </button>
-                `).join('')}
-                <div class="ripples"></div>
+                    <button class="group">
+                        <span>&#xf59b;</span>
+                        <text>Entertainment</text>
+                    </button>
+                </div>
+                <button class="on group">
+                    <span>&#xf09a;</span>
+                    <text>Facebook</text>
+                    <p class="new">2</p>
+                </button>
+                <div class="sub">
+                    <button class="on">
+                        <img class="circle" src="https://scontent.fceb2-1.fna.fbcdn.net/v/t1.15752-9/453653995_999851814960480_9019859803039608678_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=108&ccb=1-7&_nc_sid=b70caf&_nc_eui2=AeFYuuuf4Phwt7KngutA46mbgxiEK8Vs-DyDGIQrxWz4PGzFfoasnHaGX8E-dF2YrIXk2PoRh22UDAeFn0q8PUUK&_nc_ohc=Il4ODsZ2keAQ7kNvgEzp7g4&_nc_zt=23&_nc_ht=scontent.fceb2-1.fna&oh=03_Q7cD1QEiik80Amv04_Tp9g4qvP6zPfKmphpOJi4v4VgfuG0_uA&oe=676F6F1B"></img>
+                        <text>BS CpE 3 - USA</text>
+                        <p class="new">2</p>
+                    </button>
+                    <button>
+                        <img class="circle" src="https://scontent.fceb6-1.fna.fbcdn.net/v/t1.15752-9/449668416_1012620157256442_5407466417172045108_n.png?stp=dst-png_s100x100&_nc_cat=100&ccb=1-7&_nc_sid=b70caf&_nc_eui2=AeHg4pOS3nhWqo14_HVg7uee8gFz8waoE_vyAXPzBqgT-7JNEkZIgP0eIcN86vLnoef7sxdX1rqmejIUnbGsOB87&_nc_ohc=LtXSmFcMmzQQ7kNvgHXAM4e&_nc_zt=23&_nc_ht=scontent.fceb6-1.fna&oh=03_Q7cD1QGMrbsOZhKwNtHd1sJ0oRaFPCPNeBpmgXQOIYs9kMQWog&oe=676F656E"></img>
+                        <text>GDSC Technology Department (2024-2025)</text>
+                        <p>58m</p>
+                    </button>
+                </div>
+                <div class="end">
+                    <button>
+                        <span>+</span>
+                        <text>New</text>
+                    </button>
+                </div>
             </div>
-            <script>
-                ${client_script(client_code)}
-            </script>
+            <div id="head">
+                <button>
+                    <span>&#xf00d;</span>
+                    <text>Close</text>
+                </button>
+                <div contenteditable="true">
+                    <span class="back">https://</span>facebook.com
+                </div>
+                <button>
+                    <span>&#xf0ee;</span>
+                    <text>Upload</text>
+                </button>
+                <button>
+                    <span>&#xe20a;</span>
+                    <text>Send</text>
+                </button>
+            </div>
+            <div id="site">
+            </div>
+            <div id="chat">
+                <div>
+                    <div class="head">
+                        <img src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/420154927_2049570245443001_2566655327190743012_n.jpg?stp=cp6_dst-jpg_s100x100_tt6&_nc_cat=103&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEDsJwV17O9IapT1kaL2RgVpyTMKrNOJqOnJMwqs04mo9vnigNvJAEkc93pDEDURKr0ydnkX9ZbGox5CW3xvtkt&_nc_ohc=MZ5xk_8okfEQ7kNvgGNrZTy&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AF5G97l2vIWaqe2vVSrn0gn&oh=00_AYDpdI33otTrGKSjpkuDRT04rJWCY_yObZaJnZRycBn2Rw&oe=674DE14D"></img>
+                        <text class="name">Ethel Herna Pabito <span>Ethel Herna Pabito removed you from the group.</span></text>
+                        <text class="time">2:32pm</text>
+                        <div class="reacts">
+                            <button>
+                                <span>&#xf59b;</span>
+                                <text>Brent Lachica</text>
+                                <p class="num">1</p>
+                            </button>
+                        </div>
+                        <div class="acts">
+                            <button>
+                                <span>&#xf086;</span>
+                                <text>Comments</text>
+                            </button>
+                            <button>
+                                <span>&#xf070;</span>
+                                <text>Hide</text>
+                            </button>
+                            <button>
+                                <span>&#xf1ab;</span>
+                                <text>Translate</text>
+                            </button>
+                            <button>
+                                <span>&#xf02e;</span>
+                                <text>Save</text>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="clip_bkg"></div>
+                        <div class="clip_fnt"></div>
+                        <div class="clip_top"></div>
+                        <div class="clip_pin"></div>
+                        <img src="https://scontent.xx.fbcdn.net/v/t1.15752-9/467474457_3937506899865563_7185184934182848523_n.jpg?stp=dst-jpg_p480x480&_nc_cat=105&ccb=1-7&_nc_sid=0024fc&_nc_eui2=AeHl2kDdvMmM1Mxfk17s14OK2Z7DiYECMErZnsOJgQIwShrIrNuluXn_2Hy40LVyLfRPjbVWkhnbNdsUEOmeadDL&_nc_ohc=Do3yQ-CuyQcQ7kNvgHt_TkP&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=scontent.xx&oh=03_Q7cD1QHRNA_XDzsEudWBin9H88_cxESk3O_ew9jAnejyL3xDQA&oe=676F7625"></img><br>
+                        <text class="user">Brent Lachica</text> halongi acc mo<br>
+                        Gapatol na sa tebom
+                    </div>
+                    <div class="foot">
+                        <div>
+                            <div class="head">
+                                <img src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/420154927_2049570245443001_2566655327190743012_n.jpg?stp=cp6_dst-jpg_s100x100_tt6&_nc_cat=103&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEDsJwV17O9IapT1kaL2RgVpyTMKrNOJqOnJMwqs04mo9vnigNvJAEkc93pDEDURKr0ydnkX9ZbGox5CW3xvtkt&_nc_ohc=MZ5xk_8okfEQ7kNvgGNrZTy&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AF5G97l2vIWaqe2vVSrn0gn&oh=00_AYDpdI33otTrGKSjpkuDRT04rJWCY_yObZaJnZRycBn2Rw&oe=674DE14D"></img>
+                                <text class="name">Ethel Herna Pabito <span>Ethel Herna Pabito removed you from the group.</span></text>
+                                <text class="time">2:32pm</text>
+                                <div class="reacts">
+                                    <button>
+                                        <span>&#xf59b;</span>
+                                        <text>Brent Lachica</text>
+                                        <p class="num">1</p>
+                                    </button>
+                                </div>
+                                <div class="acts">
+                                    <button>
+                                        <span>&#xf086;</span>
+                                        <text>Comments</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf070;</span>
+                                        <text>Hide</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf1ab;</span>
+                                        <text>Translate</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf02e;</span>
+                                        <text>Save</text>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="body">
+                                <div class="clip_bord"></div>
+                                <text class="user">Brent Lachica</text> halongi acc mo<br>
+                                Gapatol na sa tebom
+                            </div>
+                        </div>
+                        <div>
+                            <div class="clip_bord"></div>
+                            <div class="clip_head"></div>
+                            <div class="head">
+                                <img src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/420154927_2049570245443001_2566655327190743012_n.jpg?stp=cp6_dst-jpg_s100x100_tt6&_nc_cat=103&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEDsJwV17O9IapT1kaL2RgVpyTMKrNOJqOnJMwqs04mo9vnigNvJAEkc93pDEDURKr0ydnkX9ZbGox5CW3xvtkt&_nc_ohc=MZ5xk_8okfEQ7kNvgGNrZTy&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AF5G97l2vIWaqe2vVSrn0gn&oh=00_AYDpdI33otTrGKSjpkuDRT04rJWCY_yObZaJnZRycBn2Rw&oe=674DE14D"></img>
+                                <text class="name">Ethel Herna Pabito <span>Ethel Herna Pabito removed you from the group.</span></text>
+                                <text class="time">2:32pm</text>
+                                <div class="reacts">
+                                    <button>
+                                        <span>&#xf59b;</span>
+                                        <text>Brent Lachica</text>
+                                        <p class="num">1</p>
+                                    </button>
+                                </div>
+                                <div class="acts">
+                                    <button>
+                                        <span>&#xf086;</span>
+                                        <text>Comments</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf070;</span>
+                                        <text>Hide</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf1ab;</span>
+                                        <text>Translate</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf02e;</span>
+                                        <text>Save</text>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="body">
+                                <div class="clip_bord"></div>
+                                <text class="user">Brent Lachica</text> halongi acc mo<br>
+                                Gapatol na sa tebom
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="clip_bord"></div>
+                    <div class="clip_head"></div>
+                    <div class="head">
+                        <img src="https://yt3.ggpht.com/ytc/AIdro_lzpNh6wr6w5WpMTTYEE6SlolvC7Tg4RpLv0uEh_oNSeQ=s68-c-k-c0x00ffffff-no-rj"></img>
+                        <text class="name">Lessons in Meme Culture</text>
+                        <text class="time">7h</text>
+                        <div class="reacts">
+                            <button>
+                                <span>&#xf06e;</span>
+                                <p class="num">235K</p>
+                            </button>
+                            <button>
+                                <span>&#xf086;</span>
+                                <p class="num">1.2K</p>
+                            </button>
+                        </div>
+                        <div class="acts">
+                            <button>
+                                <span>&#xf070;</span>
+                                <text>Hide</text>
+                            </button>
+                            <button>
+                                <span>&#xf1ab;</span>
+                                <text>Translate</text>
+                            </button>
+                            <button>
+                                <span>&#xf02e;</span>
+                                <text>Save</text>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="body stick">
+                        <div class="clip_bord"></div>
+                        <h1>Kai Cenat Stream Went Wrong<h1>
+                        <img src="https://i.ytimg.com/vi/eP7YA_FdUNw/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDONNV7HgsZSg9U8CkveE6cHFUrfA"/>
+                        <text class="dur">2:31</text>
+                    </div>
+                    <div class="foot">
+                        <div>
+                            <div class="head">
+                                <img src="https://yt3.ggpht.com/Nhkk3VC_MiDdnwJ0CDbHSYuKRAnzXez5V53ybLoRahG0z6FDHLwAcCXnUuczXit7W2hJgZYRsw=s88-c-k-c0x00ffffff-no-rj"></img>
+                                <text class="name">@Kulkogo</text>
+                                <text class="time">6h</text>
+                                <div class="reacts">
+                                    <button>
+                                        <span>&#xf164;</span>
+                                        <p class="num">6.3K</p>
+                                    </button>
+                                    <button>
+                                        <span>&#xf086;</span>
+                                        <p class="num">24</p>
+                                    </button>
+                                </div>
+                                <div class="acts">
+                                    <button>
+                                        <span>&#xf070;</span>
+                                        <text>Hide</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf1ab;</span>
+                                        <text>Translate</text>
+                                    </button>
+                                    <button>
+                                        <span>&#xf02e;</span>
+                                        <text>Save</text>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="body">
+                                Pranks in 2000’s: Put fake poop on sidewalk<br>
+                                Pranks in 2020’s: Pretend to get hanged by someone
+                            </div>
+                            <div class="foot">
+                                <div>
+                                    <div class="head">
+                                        <img src="https://yt3.ggpht.com/ytc/AIdro_lLnKoeeshVAihd6fzv6kH2I5Z2hazaSmFor21LuTHiRLxtQKgNz8cZ4bhyR3kbzuQe7Q=s88-c-k-c0x00ffffff-no-rj"></img>
+                                        <text class="name">@baselbaiatra7241</text>
+                                        <text class="time">6h</text>
+                                        <div class="reacts">
+                                            <button>
+                                                <span>&#xf164;</span>
+                                                <p class="num">73</p>
+                                            </button>
+                                            <button>
+                                                <span>&#xf086;</span>
+                                                <p class="num">0</p>
+                                            </button>
+                                        </div>
+                                        <div class="acts">
+                                            <button>
+                                                <span>&#xf070;</span>
+                                                <text>Hide</text>
+                                            </button>
+                                            <button>
+                                                <span>&#xf1ab;</span>
+                                                <text>Translate</text>
+                                            </button>
+                                            <button>
+                                                <span>&#xf02e;</span>
+                                                <text>Save</text>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="body">
+                                        we do a little trolling
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="clip_bord"></div>
+                    <div class="clip_head"></div>
+                    <div class="head">
+                        <img src="https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/420154927_2049570245443001_2566655327190743012_n.jpg?stp=cp6_dst-jpg_s100x100_tt6&_nc_cat=103&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEDsJwV17O9IapT1kaL2RgVpyTMKrNOJqOnJMwqs04mo9vnigNvJAEkc93pDEDURKr0ydnkX9ZbGox5CW3xvtkt&_nc_ohc=MZ5xk_8okfEQ7kNvgGNrZTy&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=AF5G97l2vIWaqe2vVSrn0gn&oh=00_AYDpdI33otTrGKSjpkuDRT04rJWCY_yObZaJnZRycBn2Rw&oe=674DE14D"></img>
+                        <text class="name">Ethel Herna Pabito <span>Ethel Herna Pabito removed you from the group.</span></text>
+                        <text class="time">2:32pm</text>
+                        <div class="reacts">
+                            <button>
+                                <span>&#xf59b;</span>
+                                <text>Brent Lachica</text>
+                                <p class="num">1</p>
+                            </button>
+                        </div>
+                        <div class="acts">
+                            <button>
+                                <span>&#xf086;</span>
+                                <text>Comments</text>
+                            </button>
+                            <button>
+                                <span>&#xf070;</span>
+                                <text>Hide</text>
+                            </button>
+                            <button>
+                                <span>&#xf1ab;</span>
+                                <text>Translate</text>
+                            </button>
+                            <button>
+                                <span>&#xf02e;</span>
+                                <text>Save</text>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="clip_bord"></div>
+                        <img src="https://scontent.xx.fbcdn.net/v/t1.15752-9/467474457_3937506899865563_7185184934182848523_n.jpg?stp=dst-jpg_p480x480&_nc_cat=105&ccb=1-7&_nc_sid=0024fc&_nc_eui2=AeHl2kDdvMmM1Mxfk17s14OK2Z7DiYECMErZnsOJgQIwShrIrNuluXn_2Hy40LVyLfRPjbVWkhnbNdsUEOmeadDL&_nc_ohc=Do3yQ-CuyQcQ7kNvgHt_TkP&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=scontent.xx&oh=03_Q7cD1QHRNA_XDzsEudWBin9H88_cxESk3O_ew9jAnejyL3xDQA&oe=676F7625"></img><br>
+                        <text class="user">Brent Lachica</text> halongi acc mo<br>
+                        Gapatol na sa tebom
+                    </div>
+                </div>
+            </div>
         </body>
     </html>`
 });

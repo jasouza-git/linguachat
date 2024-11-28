@@ -24,6 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.client_script = exports.toJSCode = exports.Browser = exports.events = void 0;
+// tsc {ts file} --outDir {folder} --watch --target ES2017 --module nodenext --moduleResolution nodenext
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
