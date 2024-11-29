@@ -597,6 +597,9 @@ let browser = new Browser({
                         <text class="user">Brent Lachica</text> halongi acc mo<br>
                         Gapatol na sa tebom
                     </div>
+                    <div class="summ">
+                        <text><text class="summ_sent">image</text> Brent Lachica halongi acc mo. Gapatol na sa tebom</text>
+                    </div>
                     <div class="foot">
                         <div>
                             <div class="head">
@@ -633,6 +636,9 @@ let browser = new Browser({
                                 <div class="clip_bord"></div>
                                 <text class="user">Brent Lachica</text> halongi acc mo<br>
                                 Gapatol na sa tebom
+                            </div>
+                            <div class="summ">
+                                <text>Brent Lachica halongi acc mo. Gapatol na sa tebom</text>
                             </div>
                         </div>
                         <div>
@@ -673,6 +679,9 @@ let browser = new Browser({
                                 <text class="user">Brent Lachica</text> halongi acc mo<br>
                                 Gapatol na sa tebom
                             </div>
+                            <div class="summ">
+                                <text>Brent Lachica halongi acc mo. Gapatol na sa tebom</text>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -682,15 +691,15 @@ let browser = new Browser({
                     <div class="head">
                         <img src="https://yt3.ggpht.com/ytc/AIdro_lzpNh6wr6w5WpMTTYEE6SlolvC7Tg4RpLv0uEh_oNSeQ=s68-c-k-c0x00ffffff-no-rj"></img>
                         <text class="name">Lessons in Meme Culture</text>
-                        <text class="time">7h</text>
+                        <text class="time">15h</text>
                         <div class="reacts">
                             <button>
                                 <span>&#xf06e;</span>
-                                <p class="num">235K</p>
+                                <p class="num">438K</p>
                             </button>
                             <button>
                                 <span>&#xf086;</span>
-                                <p class="num">1.2K</p>
+                                <p class="num">1.6K</p>
                             </button>
                         </div>
                         <div class="acts">
@@ -714,7 +723,7 @@ let browser = new Browser({
                         <img src="https://i.ytimg.com/vi/eP7YA_FdUNw/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLDONNV7HgsZSg9U8CkveE6cHFUrfA"/>
                         <text class="dur">2:31</text>
                     </div>
-                    <div class="foot">
+                    <div class="foot" style="--offset:323px">
                         <div>
                             <div class="head">
                                 <img src="https://yt3.ggpht.com/Nhkk3VC_MiDdnwJ0CDbHSYuKRAnzXez5V53ybLoRahG0z6FDHLwAcCXnUuczXit7W2hJgZYRsw=s88-c-k-c0x00ffffff-no-rj"></img>
@@ -723,11 +732,11 @@ let browser = new Browser({
                                 <div class="reacts">
                                     <button>
                                         <span>&#xf164;</span>
-                                        <p class="num">6.3K</p>
+                                        <p class="num">9.6K</p>
                                     </button>
                                     <button>
                                         <span>&#xf086;</span>
-                                        <p class="num">24</p>
+                                        <p class="num">31</p>
                                     </button>
                                 </div>
                                 <div class="acts">
@@ -749,20 +758,23 @@ let browser = new Browser({
                                 Pranks in 2000’s: Put fake poop on sidewalk<br>
                                 Pranks in 2020’s: Pretend to get hanged by someone
                             </div>
+                            <div class="summ">
+                                <text>Pranks in 2000’s: Put fake poop on sidewalk. Pranks in 2020’s: Pretend to get hanged by someone</text>
+                            </div>
                             <div class="foot">
                                 <div>
                                     <div class="head">
-                                        <img src="https://yt3.ggpht.com/ytc/AIdro_lLnKoeeshVAihd6fzv6kH2I5Z2hazaSmFor21LuTHiRLxtQKgNz8cZ4bhyR3kbzuQe7Q=s88-c-k-c0x00ffffff-no-rj"></img>
-                                        <text class="name">@baselbaiatra7241</text>
-                                        <text class="time">6h</text>
+                                        <img src="https://yt3.ggpht.com/cTz7LwOrUP7FYKefWdiaTsS2Z6uIsJADBePrcEzQVek9bjWRH9VyEj8frB3KxNEmQzdrcufWxg=s88-c-k-c0x00ffffff-no-rj"></img>
+                                        <text class="name">@Rudzani</text>
+                                        <text class="time">15h</text>
                                         <div class="reacts">
                                             <button>
                                                 <span>&#xf164;</span>
-                                                <p class="num">73</p>
+                                                <p class="num">123</p>
                                             </button>
                                             <button>
                                                 <span>&#xf086;</span>
-                                                <p class="num">0</p>
+                                                <p class="num">1</p>
                                             </button>
                                         </div>
                                         <div class="acts">
@@ -781,7 +793,49 @@ let browser = new Browser({
                                         </div>
                                     </div>
                                     <div class="body">
-                                        we do a little trolling
+                                        Bro doesn't know anything about pranks in the 2000s
+                                    </div>
+                                    <div class="summ">
+                                        <text>Bro doesn't know anything about pranks in the 2000s</text>
+                                    </div>
+                                    <div class="foot">
+                                        <div>
+                                            <div class="head">
+                                                <img src="https://yt3.ggpht.com/UgA9z__JcjjFuug4wbjPeHrk1RUGs614SNycsbyeBjxm9fi0e5FKDVs3TKXTXI81fsY-vxtPgIg=s88-c-k-c0x00ffffff-no-rj"></img>
+                                                <text class="name">@drunkenhobo5039</text>
+                                                <text class="time">14h</text>
+                                                <div class="reacts">
+                                                    <button>
+                                                        <span>&#xf164;</span>
+                                                        <p class="num">7</p>
+                                                    </button>
+                                                    <button>
+                                                        <span>&#xf086;</span>
+                                                        <p class="num">0</p>
+                                                    </button>
+                                                </div>
+                                                <div class="acts">
+                                                    <button>
+                                                        <span>&#xf070;</span>
+                                                        <text>Hide</text>
+                                                    </button>
+                                                    <button>
+                                                        <span>&#xf1ab;</span>
+                                                        <text>Translate</text>
+                                                    </button>
+                                                    <button>
+                                                        <span>&#xf02e;</span>
+                                                        <text>Save</text>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="body">
+                                                Yeah someone wasn't around for "Happy slapping".
+                                            </div>
+                                            <div class="summ">
+                                                <text>Yeah someone wasn't around for "Happy slapping".</text>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

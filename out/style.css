@@ -45,10 +45,6 @@
   src: url(fonts/sans.woff2) format("woff2");
 }
 /* ----- MIXINS ----- */
-@counter-style XLINES {
-  symbols: "X";
-  suffix: "";
-}
 /* ----- ELEMENTS ----- */
 html, body {
   height: 100%;
@@ -345,16 +341,16 @@ body {
 }
 #chat > div, #chat div.foot > div {
   position: relative;
-  margin: 13.75px;
+  margin: 8.25px 13.75px;
   display: inline-block;
 }
 #chat > div > div.head, #chat div.foot > div > div.head {
   position: sticky;
   top: 0;
-  margin-bottom: -11px;
+  margin-bottom: 33px;
   display: grid;
   grid-template: 27.5px 27.5px/55px auto 1fr auto auto;
-  z-index: 3;
+  z-index: 4;
   padding: 5.5px 5.5px 11px 5.5px;
   background: #141314;
   padding-top: calc(5.5px + var(--offset));
@@ -635,12 +631,27 @@ body {
 #chat > div > div.body, #chat div.foot > div > div.body {
   position: relative;
   color: #141314;
-  border-radius: 0 0 11px 11px;
   overflow: hidden;
   padding: 11px;
   background: linear-gradient(45deg, #cac6c6, rgb(183.8, 180.1, 180.2));
   background-attachment: fixed;
-  z-index: 2;
+  margin-top: -44px;
+  border-radius: 0 0 11px 11px;
+  z-index: 3;
+}
+#chat > div > div.body.stick, #chat div.foot > div > div.body.stick {
+  position: sticky;
+  top: 60.5px;
+}
+#chat > div > div.body text.summ_sent, #chat div.foot > div > div.body text.summ_sent {
+  color: rgb(111, 108.5, 109);
+  font-style: italic;
+}
+#chat > div > div.body text.summ_sent::before, #chat div.foot > div > div.body text.summ_sent::before {
+  content: "[";
+}
+#chat > div > div.body text.summ_sent::after, #chat div.foot > div > div.body text.summ_sent::after {
+  content: "]";
 }
 #chat > div > div.body h1, #chat div.foot > div > div.body h1 {
   margin: 5.5px;
@@ -658,14 +669,57 @@ body {
   padding: 2.75px 5.5px;
   border-radius: 5.5px;
 }
-#chat > div > div.body.stick, #chat div.foot > div > div.body.stick {
+#chat > div > div.summ, #chat div.foot > div > div.summ {
   position: sticky;
-  top: 60.5px;
+  height: 33px;
+  top: 66px;
+  color: #141314;
+  border-radius: 0 0 11px 11px;
+  padding: 0 11px 11px 11px;
+  background: linear-gradient(45deg, #cac6c6, rgb(183.8, 180.1, 180.2));
+  background-attachment: fixed;
+  z-index: 2;
+  margin-top: -33px;
+  border-bottom: 2.75px solid #141314;
+}
+#chat > div > div.summ > text, #chat div.foot > div > div.summ > text {
+  position: absolute;
+  width: calc(100% - 22px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+}
+#chat > div > div.summ > text text.summ_sent, #chat div.foot > div > div.summ > text text.summ_sent {
+  color: rgb(111, 108.5, 109);
+  font-style: italic;
+}
+#chat > div > div.summ > text text.summ_sent::before, #chat div.foot > div > div.summ > text text.summ_sent::before {
+  content: "[";
+}
+#chat > div > div.summ > text text.summ_sent::after, #chat div.foot > div > div.summ > text text.summ_sent::after {
+  content: "]";
+}
+#chat > div > div.summ > text h1, #chat div.foot > div > div.summ > text h1 {
+  margin: 5.5px;
+}
+#chat > div > div.summ > text img, #chat div.foot > div > div.summ > text img {
+  max-width: 50vw;
+  max-height: 50vh;
+}
+#chat > div > div.summ > text img + text.dur, #chat div.foot > div > div.summ > text img + text.dur {
+  position: absolute;
+  margin: 11px 0 0 -11px;
+  font-size: 16.5px;
+  transform: translate(-100%, 0);
+  background: rgba(20, 19, 20, 0.5);
+  padding: 2.75px 5.5px;
+  border-radius: 5.5px;
 }
 #chat > div > div.foot, #chat div.foot > div > div.foot {
   position: relative;
-  margin-top: -11px;
-  padding-top: 11px;
+  margin-top: -13.75px;
+  padding-top: 13.75px;
   padding-left: 5.5px;
   z-index: 1;
 }
@@ -678,16 +732,32 @@ body {
   height: 100%;
   background: linear-gradient(45deg, #cac6c6, rgb(183.8, 180.1, 180.2));
   background-attachment: fixed;
-  opacity: 0.25;
+  opacity: 0.125;
+  border-radius: 0 0 0 11px;
 }
 #chat > div > .head {
   top: 0;
 }
+#chat > div > .summ {
+  top: calc(66px + var(--offset));
+}
 #chat > div > div.foot > div > .head {
-  top: 66px;
+  top: 99px;
+}
+#chat > div > div.foot > div > .summ {
+  top: calc(170.5px + var(--offset));
 }
 #chat > div > div.foot > div > div.foot > div > .head {
-  top: 132px;
+  top: 198px;
+}
+#chat > div > div.foot > div > div.foot > div > .summ {
+  top: calc(269.5px + var(--offset));
+}
+#chat > div > div.foot > div > div.foot > div > div.foot > div > .head {
+  top: 297px;
+}
+#chat > div > div.foot > div > div.foot > div > div.foot > div > .summ {
+  top: calc(363px + var(--offset));
 }
 
 /* ----- LIGHT MODE ----- */

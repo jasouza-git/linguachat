@@ -56,9 +56,6 @@ $foot: linear-gradient(45deg, $text, color.mix($text, $dark, 90%))
     src: url(fonts/sans.woff2) format('woff2')
 
 /* ----- MIXINS ----- */
-@counter-style XLINES
-   symbols: 'X'
-   suffix: ''
 @mixin button($u:$unit,$w:NULL)
     @if $w == NULL
         $w: $u
@@ -146,6 +143,28 @@ $foot: linear-gradient(45deg, $text, color.mix($text, $dark, 90%))
             background-clip: text
         p
             display: none
+@mixin content
+    text
+        &.summ_sent
+            color: color.mix($dark, $text, 50%)
+            font-style: italic
+            &::before
+                content: '['
+            &::after
+                content: ']'
+    h1
+        margin: 0.1*$unit
+    img
+        max-width: 50vw
+        max-height: 50vh
+        &+text.dur
+            position: absolute
+            margin: 0.2*$unit 0 0 -0.2*$unit
+            font-size: 0.3*$unit
+            transform: translate(-100%, 0)
+            background: color.adjust($dark, $alpha: -0.5)
+            padding: 0.05*$unit 0.1*$unit
+            border-radius: 0.1*$unit
 
 /* ----- ELEMENTS ----- */
 html, body
@@ -232,17 +251,16 @@ body
         align-items: flex-start
         &>div
             position: relative
-            margin: 0.25*$unit
+            margin: 0.15*$unit 0.25*$unit
             //margin-top: $unit
             display: inline-block
             &>div.head
                 position: sticky
                 top: 0
-                //margin: -$unit 0 -0.21*$unit 0
-                margin-bottom: -0.2*$unit
+                margin-bottom: 0.6*$unit
                 display: grid
                 grid-template: 0.5*$unit 0.5*$unit / #{$unit} auto 1fr auto auto
-                z-index: 3
+                z-index: 4
                 padding: 0.1*$unit 0.1*$unit 0.2*$unit 0.1*$unit
                 background: $dark
                 padding-top: calc(0.1*$unit + var(--offset))
@@ -320,32 +338,41 @@ body
             &>div.body
                 position: relative
                 color: $dark
-                border-radius: 0 0 0.2*$unit 0.2*$unit
                 overflow: hidden
                 padding: 0.2*$unit
                 background: $foot
                 background-attachment: fixed
-                z-index: 2
-                h1
-                    margin: 0.1*$unit
-                img
-                    max-width: 50vw
-                    max-height: 50vh
-                    &+text.dur
-                        position: absolute
-                        margin: 0.2*$unit 0 0 -0.2*$unit
-                        font-size: 0.3*$unit
-                        transform: translate(-100%, 0)
-                        background: color.adjust($dark, $alpha: -0.5)
-                        padding: 0.05*$unit 0.1*$unit
-                        border-radius: 0.1*$unit
+                margin-top: -0.8*$unit
+                border-radius: 0 0 0.2*$unit 0.2*$unit
+                z-index: 3
                 &.stick
                     position: sticky
                     top: 1.1*$unit
+                @include content
+            &>div.summ
+                position: sticky
+                height: 0.6*$unit
+                top: 1.2*$unit
+                color: $dark
+                border-radius: 0 0 0.2*$unit 0.2*$unit
+                padding: 0 0.2*$unit 0.2*$unit 0.2*$unit
+                background: $foot
+                background-attachment: fixed
+                z-index: 2
+                margin-top: -0.6*$unit
+                border-bottom: 0.05*$unit solid $dark
+                &>text 
+                    position: absolute
+                    width: calc(100% - 0.4*$unit)
+                    overflow: hidden
+                    white-space: nowrap
+                    text-overflow: ellipsis
+                    opacity: .75
+                    @include content
             &>div.foot
                 position: relative
-                margin-top: -0.2*$unit
-                padding-top: 0.2*$unit
+                margin-top: -0.25*$unit
+                padding-top: 0.25*$unit
                 padding-left: 0.1*$unit
                 z-index: 1
                 &::before
@@ -357,17 +384,30 @@ body
                     height: 100%
                     background: $foot
                     background-attachment: fixed
-                    opacity: .25
+                    opacity: .125
+                    border-radius: 0 0 0 0.2*$unit
     // Recursive stacking (No other alternatives, tried CSS Counters)
     &>div
         &>.head
             top: 0
+        &>.summ
+            top: calc(1.2*$unit + var(--offset))
         &>div.foot>div
             &>.head
-                top: 1.2*$unit
+                top: 1.8*$unit
+            &>.summ
+                top: calc(3.1*$unit + var(--offset))
             &>div.foot>div
                 &>.head
-                    top: 2.4*$unit
+                    top: 3.6*$unit
+                &>.summ
+                    top: calc(4.9*$unit + var(--offset))
+                &>div.foot>div
+                    &>.head
+                        top: 5.4*$unit
+                    &>.summ
+                        top: calc(6.6*$unit + var(--offset))
+
 /* ----- LIGHT MODE ----- */
 body.light
     background-color: $ligh
