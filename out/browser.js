@@ -1,3 +1,4 @@
+#!/usr/bin/bash
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -24,7 +25,21 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.client_script = exports.toJSCode = exports.Browser = exports.events = void 0;
-// tsc {ts file} --outDir {folder} --watch --target ES2017 --module nodenext --moduleResolution nodenext
+/*
+    if not "%OS%" == "" (
+        @echo off
+        cls
+        echo JASOUZA BROWSER LIBRARY ^(Windows^)
+        if "%1" == "" if "%2" == "" (
+          echo browser {file path} {output path}
+          exit /b
+        )
+        tsc "%1" --outDir "%2" --watch --target ES2017 --module nodenext --moduleResolution nodenext
+        exit /b
+    )
+    clear
+    echo 'JASOUZA BROWSER LIBRARY (Unix)'
+*/
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
@@ -213,20 +228,36 @@ class Browser {
         }
     }
     /* ----- AUTOMATION ----- */
-    async wait(tab, query, func) {
-        let wait = 100;
+    async exec(tab, func) {
         if (this.tabs[tab] == undefined)
-            return func([], true);
+            return undefined;
         let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
             new Promise((res,rej)=>{
                 let func = (
                     ${func.toString()}
                 );
+                out = func();
+                res(out);
+            });
+        `);
+        return out;
+    }
+    async wait(tab, query, func, pass) {
+        let wait = 100;
+        if (this.tabs[tab] == undefined)
+            return func([], true);
+        let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
+            new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
+                let func = (
+                    ${func.toString()}
+                );
                 const start = Date.now();
                 const check = () => {
-                    const ele = document.querySelectorAll('${query}');
+                    const ele = Array.from(document.querySelectorAll('${query}'));
+                    //if (pass.parse) ele = pass.parse(ele);
                     if (ele.length != 0) {
-                        let out = func(Array.from(ele), false);
+                        let out = func(ele, false);
                         if (out !== undefined) res(out);
                     } else setTimeout(check, ${wait});
                 };
@@ -248,6 +279,8 @@ class Browser {
         this.default_url = 'https://www.google.com';
         /** Main browser size */
         this.size = [800, 800];
+        /** Client accessable data */
+        this.data = {};
         /* ----- HANDLER ----- */
         /** Deals with tab changes */
         this.tab_handle = {
@@ -299,6 +332,8 @@ class Browser {
         if (data instanceof electron_1.BrowserWindow)
             this.window = data;
         else {
+            if (data != null && 'data' in data && data.data)
+                this.data = data.data;
             // Setup window when it can
             const setup = () => {
                 this.window = new electron_1.BrowserWindow({

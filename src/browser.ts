@@ -1,4 +1,19 @@
-// tsc {ts file} --outDir {folder} --watch --target ES2017 --module nodenext --moduleResolution nodenext
+#!/usr/bin/bash
+/*
+    if not "%OS%" == "" (
+        @echo off
+        cls
+        echo JASOUZA BROWSER LIBRARY ^(Windows^)
+        if "%1" == "" if "%2" == "" (
+          echo browser {file path} {output path}
+          exit /b
+        )
+        tsc "%1" --outDir "%2" --watch --target ES2017 --module nodenext --moduleResolution nodenext
+        exit /b
+    )
+    clear
+    echo 'JASOUZA BROWSER LIBRARY (Unix)'
+*/
 import { app, BrowserWindow, WebContentsView, ipcMain, IpcMainEvent, IpcMain, NavigationEntry } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -36,6 +51,7 @@ export interface browser_parameter {
     size?:number[],
     html?:string,
     ready?:(browser:Browser)=>any,
+    data?:{[index:string]:any},
 }
 export interface client_events {
     /** A tab has changed its URL */
@@ -49,7 +65,6 @@ export interface client_events {
     /** A window has changed its focused tab */
     delta_focus:(tab_index:number, window_index:number)=>void,
 }
-
 export let events:client_events = {
     delta_url:()=>{},
     delta_title:()=>{},
@@ -85,6 +100,8 @@ export class Browser {
     default_url:string = 'https://www.google.com';
     /** Main browser size */
     size:number[] = [800,800];
+    /** Client accessable data */
+    data:{[index:string]:any} = {};
 
     /* ----- HANDLER ----- */
     /** Deals with tab changes */
@@ -281,19 +298,34 @@ export class Browser {
     }
 
     /* ----- AUTOMATION ----- */
-    async wait<T>(tab:number, query:string, func:(doms:HTMLElement[],error:boolean)=>T|undefined):Promise<T> {
+    async exec(tab:number, func:()=>any):Promise<any> {
+        if (this.tabs[tab] == undefined) return undefined;
+        let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
+            new Promise((res,rej)=>{
+                let func = (
+                    ${func.toString()}
+                );
+                out = func();
+                res(out);
+            });
+        `);
+        return out;
+    }
+    async wait<T>(tab:number, query:string, func:(doms:HTMLElement[],error:boolean)=>T, pass?:any):Promise<T> {
         let wait = 100;
         if (this.tabs[tab] == undefined) return func([], true)!;
         let out:T = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
             new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
                 let func = (
                     ${func.toString()}
                 );
                 const start = Date.now();
                 const check = () => {
-                    const ele = document.querySelectorAll('${query}');
+                    const ele = Array.from(document.querySelectorAll('${query}'));
+                    //if (pass.parse) ele = pass.parse(ele);
                     if (ele.length != 0) {
-                        let out = func(Array.from(ele), false);
+                        let out = func(ele, false);
                         if (out !== undefined) res(out);
                     } else setTimeout(check, ${wait});
                 };
@@ -310,6 +342,7 @@ export class Browser {
         this.size = size;
         if (data instanceof BrowserWindow) this.window = data;
         else {
+            if (data != null && 'data' in data && data.data) this.data = data.data;
             // Setup window when it can
             const setup = () => {
                 this.window = new BrowserWindow({
