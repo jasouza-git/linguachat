@@ -408,12 +408,7 @@ body {
 #chat {
   height: calc(100% - 115.5px);
   overflow: hidden auto;
-  padding-bottom: 11px;
   --offset: 0px;
-}
-#chat.translating {
-  opacity: 0.25;
-  pointer-events: none;
 }
 #chat, #chat div.foot {
   display: flex;
@@ -751,7 +746,7 @@ body {
 #chat > div > div.body text.token:hover > .token, #chat > div > div.body text.token:focus > .token, #chat div.foot > div > div.body text.token:hover > .token, #chat div.foot > div > div.body text.token:focus > .token {
   padding: 11px 0;
 }
-#chat > div > div.body text.token:hover > .token > .info.sub, #chat > div > div.body text.token:focus > .token > .info.sub, #chat div.foot > div > div.body text.token:hover > .token > .info.sub, #chat div.foot > div > div.body text.token:focus > .token > .info.sub {
+#chat > div > div.body text.token:hover > .token .info.sub, #chat > div > div.body text.token:focus > .token .info.sub, #chat div.foot > div > div.body text.token:hover > .token .info.sub, #chat div.foot > div > div.body text.token:focus > .token .info.sub {
   font-size: 75%;
 }
 #chat > div > div.body h1, #chat div.foot > div > div.body h1 {
@@ -869,7 +864,7 @@ body {
 #chat > div > div.summ > text text.token:hover > .token, #chat > div > div.summ > text text.token:focus > .token, #chat div.foot > div > div.summ > text text.token:hover > .token, #chat div.foot > div > div.summ > text text.token:focus > .token {
   padding: 11px 0;
 }
-#chat > div > div.summ > text text.token:hover > .token > .info.sub, #chat > div > div.summ > text text.token:focus > .token > .info.sub, #chat div.foot > div > div.summ > text text.token:hover > .token > .info.sub, #chat div.foot > div > div.summ > text text.token:focus > .token > .info.sub {
+#chat > div > div.summ > text text.token:hover > .token .info.sub, #chat > div > div.summ > text text.token:focus > .token .info.sub, #chat div.foot > div > div.summ > text text.token:hover > .token .info.sub, #chat div.foot > div > div.summ > text text.token:focus > .token .info.sub {
   font-size: 75%;
 }
 #chat > div > div.summ > text h1, #chat div.foot > div > div.summ > text h1 {
@@ -906,41 +901,6 @@ body {
   background-attachment: fixed;
   opacity: 0.125;
   border-radius: 0 0 0 11px;
-}
-#chat > div.loader, #chat div.foot > div.loader {
-  width: 100%;
-  text-align: center;
-}
-#chat > div.loader > div.head, #chat div.foot > div.loader > div.head {
-  display: flex;
-  justify-content: center;
-}
-#chat > div.loader > div.head .favicon, #chat > div.loader > div.head .name, #chat > div.loader > div.head .time, #chat > div.loader > div.head .options, #chat > div.loader > div.head::after, #chat div.foot > div.loader > div.head .favicon, #chat div.foot > div.loader > div.head .name, #chat div.foot > div.loader > div.head .time, #chat div.foot > div.loader > div.head .options, #chat div.foot > div.loader > div.head::after {
-  display: none;
-}
-#chat > div.loader > div.head::before, #chat div.foot > div.loader > div.head::before {
-  content: "\f110";
-  grid-area: 1/1;
-  width: 55px;
-  height: 55px;
-  text-align: center;
-  line-height: 55px;
-  font-family: fa;
-  font-size: 33px;
-  font-weight: bold;
-  color: #cac6c6;
-  background: none;
-  margin: 0;
-  animation: rotating 2s linear infinite;
-}
-#chat > div.loader > div.body, #chat div.foot > div.loader > div.body {
-  display: none;
-}
-#chat > div.loader > div.summ, #chat div.foot > div.loader > div.summ {
-  display: none;
-}
-#chat > div.loader > div.foot, #chat div.foot > div.loader > div.foot {
-  display: none;
 }
 #chat.update > div > div.head::after, #chat.update div.foot > div > div.head::after {
   margin-top: 0.1px;

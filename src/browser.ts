@@ -298,10 +298,11 @@ export class Browser {
     }
 
     /* ----- AUTOMATION ----- */
-    async exec(tab:number, func:()=>any):Promise<any> {
-        if (this.tabs[tab] == undefined) return undefined;
+    async exec<T>(tab:number, func:()=>T, pass?:any):Promise<T> {
+        //if (this.tabs[tab] == undefined) return undefined;
         let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
             new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
                 let func = (
                     ${func.toString()}
                 );
@@ -311,10 +312,35 @@ export class Browser {
         `);
         return out;
     }
-    async wait<T>(tab:number, query:string, func:(doms:HTMLElement[],error:boolean)=>T, pass?:any):Promise<T> {
+    async wait<T>(tab:number, query:string, func?:(doms:HTMLElement[],error:boolean)=>T, pass?:any):Promise<T> {
         let wait = 100;
-        if (this.tabs[tab] == undefined) return func([], true)!;
+        if (this.tabs[tab] == undefined && func) return func([], true)!;
         let out:T = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
+            new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
+                ${func ? `let func = (
+                    ${func.toString()}
+                )`:''}
+                const start = Date.now();
+                const check = () => {
+                    const ele = Array.from(document.querySelectorAll('${query}'));
+                    if (ele.length != 0) {
+                        ${func ? `
+                            let out = func(ele, false);
+                            if (out !== undefined) res(out);
+                        `:'res()'}
+                    } else setTimeout(check, ${wait});
+                };
+                check();
+            });
+        `);
+        console.log('OUT', out);
+        return out;
+    }
+    async wait_each<T>(tab:number, query:string, func:(dom:HTMLElement)=>T|undefined, pass?:any):Promise<T[]> {
+        let wait = 100;
+        if (this.tabs[tab] == undefined) return [];
+        let out:T[] = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/`
             new Promise((res,rej)=>{
                 let pass = ${JSON.stringify(pass)};
                 let func = (
@@ -323,17 +349,24 @@ export class Browser {
                 const start = Date.now();
                 const check = () => {
                     const ele = Array.from(document.querySelectorAll('${query}'));
-                    //if (pass.parse) ele = pass.parse(ele);
-                    if (ele.length != 0) {
-                        let out = func(ele, false);
-                        if (out !== undefined) res(out);
-                    } else setTimeout(check, ${wait});
+                    if (ele.length != 0) res(ele.map(func).filter(x=>x!==undefined));
+                    else setTimeout(check, ${wait});
                 };
                 check();
             });
         `);
-        console.log('OUT', out);
         return out;
+    }
+    async ensure_url(tab:number, url:string):Promise<boolean> {
+        let cont = this.tabs[tab].view.webContents;
+        let old_url = cont.getURL();
+        if (old_url == url) return true;
+        cont.loadURL(url);
+        await new Promise<void>(res => {
+            cont.once('did-finish-load', ()=>res());
+            cont.once('did-fail-load', ()=>res());
+        });
+        return false;
     }
 
     /* ----- CONSTRUCTOR ----- */

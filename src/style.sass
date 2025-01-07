@@ -93,7 +93,23 @@ $foot: linear-gradient(45deg, $text, color.mix($text, $dark, 90%))
         font-size: 0.3*$u
         margin-right: 0.15*$u
         color: $dark
-    p
+    p.info
+        position: relative
+        top: 0.5*$u
+        left: -0.3*$u
+        //min-width: 0.4*$u
+        height: 0.4*$u
+        width: auto
+        line-height: 0.35*$u
+        color: $dark
+        background: linear-gradient(45deg, $sec0, $sec1)
+        white-space: nowrap
+        border-radius: 0.2*$u
+        padding: 0 0.1*$u
+        margin: 0
+        border: 0.05*$u solid $dark
+        font-size: 0.3*$u
+    p:not(.info)
         position: absolute
         left: 0.4*$u
         top: 0.55*$u
@@ -155,6 +171,61 @@ $foot: linear-gradient(45deg, $text, color.mix($text, $dark, 90%))
         &.emoji
             font-family: fa
             font-weight: 900
+        &.token
+            display: inline-flex
+            position: relative
+            flex-wrap: wrap
+            justify-content: center
+            align-items: center
+            width: auto
+            transition: 0.25*$time
+            transition-delay: 0.5*$time
+            border: 0.02*$unit solid transparentize($text, 1)
+            border-radius: 0.1*$unit
+            min-width: 0
+            .info
+                position: absolute
+                left: 50%
+                width: 100%
+                transform: translate(-50%, 0)
+                text-align: center
+                color: color.mix($dark, $text, 50%)
+                //width: auto
+                //flex-basis: 100%
+                font-size: 0
+                transition: 0.25*$time
+                transition-delay: 0.5*$time
+                display: block
+                white-space: nowrap
+                overflow: scroll hidden
+                &:first-child
+                    top: 0
+                &:last-child
+                    bottom: 0
+                &::-webkit-scrollbar
+                    display: none
+            .fix
+                color: color.mix($dark, $pri1, 25%)
+                &.root
+                    color: color.mix($dark, $pri1, 50%)
+            .noun
+                color: color.mix($dark, $sec1, 25%)
+            &+.token
+                margin-left: -0.02*$unit
+            &.word+.token
+                margin-left: 0.1*$unit
+            &:hover, &:focus
+                border-color: color.mix($dark, $text, 25%)
+                //padding: 0.05*$unit 0
+                margin-top: 0.05*$unit
+                padding: 0.2*$unit 0
+                min-width: 2*$unit
+                &>.info
+                    font-size: 75%
+                &>.token
+                    padding: 0.2*$unit 0
+                    &>.info.sub
+                        font-size: 75%
     h1
         margin: 0.1*$unit
     img
@@ -184,11 +255,16 @@ body
     display: flex
     flex-direction: column
     margin: 0
+    overflow: hidden
 *
     font-family: sans
     box-sizing: border-box
     &:focus
         outline: none
+::-webkit-scrollbar
+    width: 0.15*$unit
+::-webkit-scrollbar-thumb
+    background: $pri0
 
 /* ----- CLASSES ----- */
 .spin
@@ -203,15 +279,16 @@ body
     div
         position: relative
         display: flex
-        overflow: auto hidden
+        overflow: hidden
         flex: 0 1 auto
         min-width: $unit
         &::-webkit-scrollbar
             display: none
         &.sub
             display: none
-            background-color: color.mix($dark, $text, 90%)
+            background-color: transparentize($text, 0.9)
             border-radius: 0.2*$unit 0.2*$unit 0 0
+            overflow: auto hidden
             p, img.circle
                 border-color: color.mix($dark, $text, 90%)
             /*&::before
@@ -223,6 +300,8 @@ body
                 height: 100%
                 background-color: color.mix($dark, $text, 90%)
                 border-radius: 0.2*$unit 0.2*$unit 0 0*/
+        &.scr
+            overflow: auto hidden
         &.end
             flex-grow: 1
             justify-content: end
@@ -237,6 +316,8 @@ body
             text-overflow: ellipsis
     button.on + div.sub
         display: flex
+    &>div
+        justify-content: left
 
 /* ----- HEAD ----- */
 #head
@@ -269,7 +350,11 @@ body
 #chat
     height: calc(100% - 2.1*$unit)
     overflow: hidden auto
-    --offset: 0
+    padding-bottom: 0.2*$unit
+    --offset: 0px
+    &.translating
+        opacity: .25
+        pointer-events: none
     &, & div.foot
         display: flex
         flex-direction: column
@@ -289,31 +374,34 @@ body
                     font-weight: bold
         &>div
             position: relative
-            margin: 0.15*$unit 0.25*$unit
-            //margin-top: $unit
+            margin: 0.15*$unit 0.25*$unit 0 0.25*$unit
             display: inline-block
             &>div.head
                 position: sticky
                 top: 0
-                margin-bottom: 0.6*$unit
                 display: grid
-                grid-template: 0.5*$unit 0.5*$unit / #{$unit} auto 1fr auto auto
+                grid-template: 0.5*$unit 0.5*$unit / #{$unit} 1fr auto
                 z-index: 4
-                padding: 0.1*$unit 0.1*$unit 0.2*$unit 0.1*$unit
                 background: $dark
-                padding-top: calc(0.1*$unit + var(--offset))
-                margin-top: calc(0px - var(--offset))
-                img
+                padding: calc(0.1*$unit + var(--offset)) 0.1*$unit 0.2*$unit 0.1*$unit
+                margin: calc(0px - var(--offset)) 0 0.6*$unit 0
+                .favicon
                     grid-area: 1 / 1 / span 2
                     width: 0.75*$unit
                     height: 0.75*$unit
                     margin: 0.125*$unit
-                    border-radius: 50%
                     border: 0.05*$unit solid $dark
                     background-color: $dark
+                    font: 0.5*$unit fa
+                    font-weight: 900
+                    color: $text
+                    text-align: center
+                    line-height: 0.75*$unit
+                    &.circle
+                        border-radius: 50%
                 .name
                     position: absolute
-                    grid-area: 1 / 2 / span 1 / span 5
+                    grid-area: 1 / 1 / span 1 / span 5
                     color: $pri0
                     white-space: nowrap
                     line-height: 0.6*$unit
@@ -330,29 +418,31 @@ body
                         &::after
                             content: ')'
                 .time
-                    grid-area: 2 / 2
+                    grid-area: 2 / 1 / span 1 / span 2
                     color: $text
                     opacity: 0.75
                     font-size: 0.25*$unit
-                .reacts
-                    grid-area: 2 / 5
+                .options
+                    grid-area: 2 / 3
                     display: flex
                     justify-content: center
                     margin: -0.05*$unit 0.05*$unit 0 0
-                    button
-                        color: $text
-                        @include button(0.5*$unit, $unit)
-                .acts
-                    grid-area: 2 / 6
-                    display: flex
-                    background: $foot
-                    background-attachment: fixed
                     border-radius: 0.1*$unit 0.1*$unit 0 0
-                    z-index: 2
-                    margin-right: 0.1*$unit
                     button
-                        color: $dark
+                        color: $ligh
                         @include button(0.5*$unit)
+                        padding-left: 0.1*$unit
+                        flex: auto
+                        width: auto
+                        height: 100%
+                        min-width: 0.5*$unit
+                        border-radius: 0.1*$unit 0.1*$unit 0 0
+                        p.info
+                            min-width: 0.2*$unit
+                        &.active
+                            background: $foot
+                            background-attachment: fixed
+                            color: $dark
                 &::before
                     content: ''
                     grid-area: 2 / 1
@@ -368,20 +458,24 @@ body
                     left: -0.1*$unit
                     top: 0.5*$unit
                     width: calc(100% + 0.2*$unit)
-                    grid-area: 2 / 1 / span 1 / span 6
+                    grid-area: 2 / 1 / span 1 / span 4
                     background: $foot
                     background-attachment: fixed
-                    height: 0.2*$unit
+                    height: 0.2*$unit+1
                     border-radius: 0.2*$unit 0.2*$unit 0 0
+                .favicon~.name
+                    grid-area: 1 / 2 / span 1 / span 4
+                .favicon~.time
+                    grid-area: 2 / 2
             &>div.body
                 position: relative
                 color: $dark
                 overflow: hidden
-                padding: 0.2*$unit
+                padding: 0.2*$unit 0.2*$unit 0 0.2*$unit
                 background: $foot
                 background-attachment: fixed
                 margin-top: -0.8*$unit
-                border-radius: 0 0 0.2*$unit 0.2*$unit
+                //border-radius: 0 0 0.2*$unit 0.2*$unit
                 max-height: 50vh
                 overflow: hidden auto
                 z-index: 3
@@ -391,16 +485,17 @@ body
                 @include content
             &>div.summ
                 position: sticky
-                height: 0.6*$unit
-                top: 1.2*$unit
+                height: 0.8*$unit
+                top: 1.1*$unit
                 color: $dark
                 border-radius: 0 0 0.2*$unit 0.2*$unit
-                padding: 0 0.2*$unit 0.2*$unit 0.2*$unit
+                padding: 0.2*$unit
                 background: $foot
                 background-attachment: fixed
                 z-index: 2
-                margin-top: -0.4*$unit
+                margin-top: -0.6*$unit
                 border-bottom: 0.05*$unit solid $dark
+                overflow: hidden
                 &>text 
                     position: absolute
                     width: calc(100% - 0.4*$unit)
@@ -426,27 +521,64 @@ body
                     background-attachment: fixed
                     opacity: .125
                     border-radius: 0 0 0 0.2*$unit
+            &.loader
+                width: 100%
+                text-align: center
+                &>div.head
+                    display: flex
+                    justify-content: center
+                    .favicon, .name, .time, .options, &::after
+                        display: none
+                    &::before
+                        content: '\f110'
+                        grid-area: 1 / 1
+                        width: $unit
+                        height: $unit
+                        text-align: center
+                        line-height: $unit
+                        font-family: fa
+                        font-size: 0.6*$unit
+                        font-weight: bold
+                        color: $text
+                        background: none
+                        margin: 0
+                        animation: rotating $time*4 linear infinite
+                &>div.body
+                    display: none
+                &>div.summ
+                    display: none
+                &>div.foot
+                    display: none
+    // Fixes weird non-rendering issue
+    &.update
+        &, & div.foot
+            &>div
+                &>div.head
+                    &::after
+                        margin-top: 0.1px
+                &>div.summ
+                    background: $foot
     // Recursive stacking (No other alternatives, tried CSS Counters)
     &>div
         &>.head
             top: 0
         &>.summ
-            top: calc(1.2*$unit + var(--offset))
+            top: calc(1.1*$unit + var(--offset))
         &>div.foot>div
             &>.head
-                top: 1.8*$unit
+                top: 1.85*$unit
             &>.summ
-                top: calc(3.1*$unit + var(--offset))
+                top: calc(2.95*$unit + var(--offset))
             &>div.foot>div
                 &>.head
-                    top: 3.6*$unit
+                    top: 3.7*$unit
                 &>.summ
-                    top: calc(4.9*$unit + var(--offset))
+                    top: calc(4.8*$unit + var(--offset))
                 &>div.foot>div
                     &>.head
-                        top: 5.4*$unit
+                        top: 5.55*$unit
                     &>.summ
-                        top: calc(6.6*$unit + var(--offset))
+                        top: calc(6.65*$unit + var(--offset))
 
 /* ----- LIGHT MODE ----- */
 body.light

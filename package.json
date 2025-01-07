@@ -3,17 +3,29 @@
   "version": "1.0.0",
   "main": "out/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode production",
+    "dist": "npm run build && electron-builder"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "electron": "^33.2.0"
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "ts-loader": "^9.5.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "build": {
+    "appId": "com.jasouza.linguachat",
+    "win": {
+      "target": "nsis"
+    }
   },
   "dependencies": {
     "express": "^4.21.1",
     "http-proxy-middleware": "^3.0.3",
-    "lit-html": "^3.2.1"
+    "lit-html": "^3.2.1",
+    "webpack": "^5.97.1"
   }
 }

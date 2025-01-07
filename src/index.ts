@@ -1,98 +1,104 @@
 import {Browser, client_events, client_script, events} from './browser';
+let DEBUG = 0;
 
 /* ----- INTERFACES ----- */
 interface scrape {
-    /** Browser window */
-    id?:number,
-    /** Starting URL */
-    url:string,
-    /** Get groups */
-    groups:(id:number, page:number)=>Promise<scrape_group[]>,
-    /** Get chats */
-    chats:(p:scrape, page:number, fa:{[emoji:number]:number})=>Promise<scrape_chat[]>,
-    /** Current chat page */
-    chat_page:number[],
-    /** DOM Query to match when getting group chats *
-    get_groups_q:string,
-    /** Get group chats *
-    get_groups:(page:number, doms:HTMLElement[])=>scrape_group[]
-    /** DOM Query to match when getting chats *
-    get_chats_q:string,
-    /** Get chats *
-    get_chats:(page:number, doms:HTMLElement[])=>scrape_chat[]
-    */
+    /** ### Browsing sessions (browser.tabs) */
+    session:{[name:string]:{
+        /** ### Browser tab ID */
+        id:number,
+        /** ### Is busy? */
+        //busy:boolean,
+        /** ### Action it is currently doing */
+        act:number,
+        /** ### Custom data */
+        [key:string]:any,
+    }|undefined},
+    /** ### Get page content */
+    get:(page:string[],parent:data)=>Promise<data[]>,
+    /** ### Custom data */
+    [index:string]:any,
 }
-interface scrape_group {
-    /** URL Link to the group chat */
-    link:string,
-    /** Group chat Profile picture */
-    prof:string,
-    /** Group chat name */
-    name:string,
-    /** Preview content to the group chat */
-    prev:string,
-    /** Last active */
-    last:string,
-    /** Currently focused? */
-    on:boolean,
-}
-interface scrape_chat {
-    /** Type of chat */
-    type:string,
-    /** User of chat, null means status or from current user */
-    user:null|{
-        /** Username */
-        name:string,
-        /** Profile Picture */
-        prof:string,
-        /** Nickname */
-        nick?:string,
-    },
-    /** Content of chat in HTML */
-    data:string,
-    /** Summary of content */
-    summ:string,
-    /** Date of chat */
+/**
+ * ### Data
+ * This is the main unit to represent data, similar to ActivityPub
+ */
+interface data {
+    /* ----- DATA INFORMATION ----- */
+    /** ### Favicon */
+    favicon?:string,
+    /** ### Name */
+    name?:string,
+    /** ### Info *(Additional information)* */
+    info?:string,
+    /** ### Page to load */
+    page?:string[],
+    /** ### Search Page */
+    search?:string[],
+    /** ### Main data *(Not rendered at Head)* */
+    data?:string,
+    /** ### Summary of main data *(Not rendered at Head)* */
+    summ?:string,
+    /** ### Date of content */
     date?:Date,
-    /** NOTE TEMPORARY */
-    time?:string,
-    /** Reactions */
-    reacts?:{
-        icon:string,
-        text:string,
-        data:string,
-    }[]
-}
-interface tab {
-    /** Text */
-    text?:string,
-    /** Favicon */
-    favi?:string,
-    /** Icon */
-    icon?:boolean,
-    /** Dynamic Content */
-    cont?:string,/*{
-        /** Scapper Name *
-        name:string,
-        /** What to get has tabs, if undefined then get main page *
-        get?:string,
-    },*/
-    /** Active? */
-    on?:boolean,
-    /** Sub-Tabs */
-    tabs?:tab[],
+    /** ### Parent */
+    parent?:data,
+    /** ### Metadata */
+    meta?:{[key:string]:any},
+    /** ### Data id */
+    id?:number,
+
+    /* ----- BOOLEANS ----- */
+    /** ### Favicon flags
+     * - `0` *(default)* - An image
+     * - `1` - A circular image
+     * - `2` - An icon (fontawesome)
+     */
+    favicon_flag?:number,
+    /** ### Rendered
+     * | Value | Render at Head | Render at Body |
+     * | - | - | - |
+     * | `0` | Not in focus | Someone's content |
+     * | `1` | Directly in focus | Own's content |
+     * | `2` | Its desendents are at focus | |
+     */
+    render?:number,
+    /** ## Content
+     * | Bit | Purpose |
+     * | - | - |
+     * | `1` | Allows text to be inserted |
+     * | `2` | Allows files to be uploaded |
+     */
+    content?:number,
+    /** ### Loader?
+     * Replaces data with loaded content when visible on screen
+     */
+    load?:boolean,
+    /** ### Parsers
+     * How the data is parsed
+     * | Bit | Purpose |
+     * | - | - |
+     * | `1` | Is vertically reversed? |
+     */
+    parse?:number,
+
+    /** ----- SUB-DATA ----- */
+    /** ### Children (Either tabs or options) */
+    children?:data[],
+    /** ### Options *(Not rendered at Head)* */
+    //options?:data[],
+    document?:data[],
 }
 interface user {
     /** Username */
     name:string,
-    /** Tabs */
-    tabs:tab[],
+    /** Current setup */
+    data:data[],
     /** Prefered date format */
     date:string,
 }
 
-
-/* ----- CLIENT ----- */
+/* ----- FRONTEND ----- */
 let client_code = async (async_browser:Browser, events:client_events) => {
     /* ----- EMOJI TO FONTAWESOME ----- */
     let fa:{[emoji:number]:number} = { // https://unicode.org/emoji/charts/full-emoji-list.html
@@ -115,235 +121,506 @@ let client_code = async (async_browser:Browser, events:client_events) => {
         0x1F929: 0xf587, // star-struck
         0x1F618: 0xf598, // face blowing a kiss
     };
-    /* ----- SCRAPPING ----- */
-    let scrapers:{[page:string]:scrape} = {
-        facebook: {
-            url:'https://www.facebook.com/',
-            groups: async (id,page) => {
-                let out:scrape_group[] = [];
-
-                // First click the messages button
-                async_browser.wait<Boolean>(id, '[aria-label="Messenger"]', d=>{d[0].click();return true});
-                
-                // Get group chats
-                out = await (async_browser.wait<scrape_group[]>(id, '[aria-label="Chats"]  [data-virtualized="false"] [role="link"]', doms => {
-                    let out:scrape_group[] = [];
-                    for (let d of doms) {
-                        let prof = d.querySelector<HTMLImageElement>('img[referrerpolicy="origin-when-cross-origin"]');
-                        let name = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>span>span');
-                        let prev = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:first-child');
-                        let last = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:last-child');
-                        if (prof == null || name == null || prev == null || last == null) continue;
-                        out.push({
-                            link: d.getAttribute('href')??'',
-                            prof: prof.src,
-                            name: name.innerText,
-                            prev: prev.innerText.replace(/\s+/g,' '),
-                            last: last.innerText.split('\n')[0],
-                            on: d.getAttribute('aria-current')=='page',
-                        });
-                    }
+    /* ----- OTHER DATA ----- */
+    let browser_id = async_browser.new_win([0,0,0,0]);
+    /* ----- SCRAPERS ----- */
+    let scrape_id = async_browser.new_win([2-800*2,0,800*2,800]);
+    async_browser.wins[scrape_id].show = true;
+    let scraper:{[name:string]:scrape} = {
+        /**
+         * ### Testing Scrapper
+         * - `home #N?` - Home Test
+         */
+        test: {
+            session: {},
+            get: async function(page){
+                if (page.length == 0) return [];
+                if (page[0] == 'home') {
+                    let out:data[] = [];
+                    for (let n = 0; n < 10; n++)
+                        out.push(this.rand_chat(2));
                     return out;
-                }));
+                } else if (page[0] == 'sub') {
+                    let out:data[] = [];
+                    for (let n = 0; n < 1; n++)
+                        out.push(this.rand_chat(0));
+                    return out;
+                } else if (page[0] == 'lang') {
+                    let out:data[] = [];
+                    out.push({
+                        name: 'Jan',
+                        data: 'punta kau bukas??',
+                    });
+                    out.push({
+                        name: 'Kiefer',
+                        data: 'Ano na perma bukas na available?',
+                    });
+                    out.push({
+                        name: 'Jan',
+                        data: 'idk din eh',
+                    });
+                    out.push({
+                        name: 'Jan',
+                        data: 'Patrick',
+                    });
+                    /*out.push({
+                        name: 'Title',
+                        data: '<text class="token"><text class="info">What time did you went to the cinema?</text><text class="token word"><text class="info">What</text>An<text class="token fix root"><text class="info">Change "o" to "u"</text>u</text><text class="token fix"><text class="info">to link with noun</text>ng</text><text class="info sub">\'a.nʊŋ</text></text> <text class="token word noun"><text class="info">time</text>oras<text class="info sub">\'ɔ.ras</text></text> <text class="token word"><text class="info">you</text>ka<text class="info sub">ka</text></text> <text class="token word verb"><text class="info">went</text><text class="token fix"><text class="info">indicates completed action</text>nag<text class="info">past tense</text></text>kadtu<text class="info sub">nag\'kad.tu</text></text> <text class="token word"><text class="info">to</text>sa<text class="info sub">sa</text></text> <text class="token noun"><text class="info">cinema</text>sini<text class="info sub">\'si.ni</text></text>?</text>',
+                        //data: '<text class="token sentence"><text class="info">What time did you went to the cinema?</text><text class="token word pronoun"><text class="info">What</text>Ano<text class="token fix"><text class="info">to link with noun</text>ng</text><text class="info">\'a.nʊŋ</text></text> <text class="token word root noun"><text class="info">time</text>oras<text class="info">\'ɔ.ras</text></text> <text class="token word root pronoun"><text class="info">you</text>ka<text class="info">ka</text></text> <text class="token word verb"><text class="info">went</text><text class="token fix"><text class="info">indicates completed action</text>nag<text class="info">past tense</text></text>kadtu<text class="info">nag\'kad.tu</text></text> <text class="token word root preposition"><text class="info">to</text>sa<text class="info">sa</text></text> <text class="token root noun"><text class="info">cinema</text>sini<text class="info">\'si.ni</text></text>?</text>',
+                        summ: 'Hello World',
+                        date: new Date()
+                    });
+                    out.push({
+                        name: 'Title',
+                        data: '<text class="token"><text class="info">The teacher will go to America next month</text><text class="token word noun"><text class="info">Will go to America</text><text class="token fix"><text class="info">future tense or intention</text>Mapa-</text>Amerika<text class="info sub">\'ma.pa.a\'me.ɾi.ka</text></text> <text class="token word"><text class="info">marks the subject of the sentence</text>ang<text class="info sub">aŋ</text></text> <text class="token word"><text class="info">teacher</text><text class="token fix"><text class="info">person with a profession</text>ma\'</text>estro<text class="info sub">ma\'ɛs.tɾo</text></text> <text class="token word"><text class="info">next</text><text class="token fix"><text class="info">future tense</text>sa</text>sunud<text class="info sub">sa\'su.nud</text></text> <text class="token word"><text class="info">linker to noun</text>nga<text class="info sub">ŋa</text></text> <text class="token word"><text class="info">month</text>bulan<text class="info sub">\'bu.lan</text></text></text>'
+                    });
+                    out.push({
+                        name: 'Title',
+                        data: '<text class="token sentence"><text class="info">I like apples</text><text class="token pronoun"><text class="info">I/me/my</text>我<text class="info sub">wǒ</text></text><text class="token"><text class="info">like</text><text class="token"><text class="info">to be fond of/to like/to enjoy to be happy/to feel pleased/happiness/delight/glad</text>喜<text class="info sub">xǐ</text></text><text class="token"><text class="info">joyous/happy/pleased</text>欢<text class="info sub">huān</text></text></text><text class="token"><text class="info">apple</text><text class="token"><text class="info">wild herb/duckweed</text>苹<text class="info sub">píng</text></text><text class="token"><text class="info">fruit</text>果<text class="info sub">guǒ</text></text></text></text></text>'
+                    });
+                    out.push({
+                        name: 'JV',
+                        data: `<text class="token">
+                                <text class="info">Good morning ma’am Besona Phoenix Tata, is it okay ma’am if I’m late?</text>
+                                <text class="token word"><text class="info">Good</text>Good<text class="info sub">gʊd</text></text>
+                                <text class="token word"><text class="info">morning</text>morning<text class="info sub">ˈmɔːr.nɪŋ</text></text>
+                                <text class="token word"><text class="info">ma’am</text>ma’am<text class="info sub">mæm</text></text>
+                                <text class="token word noun"><text class="info">Proper noun</text>Besona Phoenix Tata<text class="info sub">ˈbɛ.səʊ.nə ˈfiː.nɪks ˈtɑː.tə</text></text>
+                                <text class="token word"><text class="info">okay</text>okay<text class="info sub">ˈoʊ.keɪ</text></text>
+                                <text class="token word"><text class="info">ma’am</text>ma’am<text class="info sub">mæm</text></text>
+                                <text class="token word"><text class="info">if</text>if<text class="info sub">ɪf</text></text>
+                                <text class="token word"><text class="info">I’m</text>I’m<text class="info sub">aɪm</text></text>
+                                <text class="token word"><text class="info">late</text>late<text class="info sub">leɪt</text></text>?
+                            </text><br><text class="token">
+                                <text class="info">There’s a conflict ma’am with one of my subjects.</text>
+                                <text class="token word"><text class="info">There is</text>Ga<text class="info sub">gæ</text></text>
+                                <text class="token word"><text class="info">conflict</text>conflict<text class="info sub">ˈkɒn.flɪkt</text></text>
+                                <text class="token word"><text class="info">ma’am</text>ma’am<text class="info sub">mæm</text></text>
+                                <text class="token word"><text class="info">with</text>abi<text class="info sub">ˈæ.bi</text></text>
+                                <text class="token word"><text class="info">one</text>isa<text class="info sub">ˈɪ.sæ</text></text>
+                                <text class="token word"><text class="info">of</text>mo<text class="info sub">moʊ</text></text>
+                                <text class="token word"><text class="info">my</text>ka<text class="info sub">ka</text></text>
+                                <text class="token word"><text class="info">subject</text>subject<text class="info sub">ˈsʌb.dʒɪkt</text></text>
+                            </text>`
+                    });
+                    out.push({
+                        name: 'Besona',
+                        data: `<text class="token">
+                            <text class="info">What time are you coming?</text>
+                            <text class="token word"><text class="info">What</text>What<text class="info sub">wɒt</text></text>
+                            <text class="token word"><text class="info">time</text>time<text class="info sub">taɪm</text></text>
+                            <text class="token word"><text class="info">are</text>ka<text class="info sub">ka</text></text>?
+                        </text><br><text class="token">
+                            <text class="info">Catch up after your exam JV Lechoncito.</text>
+                            <text class="token word"><text class="info">Catch</text>Apas<text class="info sub">ˈæ.pəs</text></text>
+                            <text class="token word"><text class="info">you</text>ka<text class="info sub">ka</text></text>
+                            <text class="token word"><text class="info">just</text>lang<text class="info sub">læŋ</text></text>
+                            <text class="token word"><text class="info">after</text>matapus<text class="info sub">məˈtæ.pus</text></text>
+                            <text class="token word"><text class="info">your</text>inyo<text class="info sub">ɪn.joʊ</text></text>
+                            <text class="token word"><text class="info">exam</text>exam<text class="info sub">ɪgˈzæm</text></text>
+                            <text class="token word noun"><text class="info">Proper noun</text>JV Lechoncito<text class="info sub">ˈdʒeɪ.vi ˈlɛtʃ.ɔnˈsi.toʊ</text></text>
+                        </text>`
+                    });*/
+
+                    return out;
+                }
+                return [];
+            },
+            rand: (r:string[], z:number):string => {
+                let out = '';
+                for (let n = 0; n < z; n++)
+                    out += r[Math.floor(r.length*Math.random())];
                 return out;
             },
-            chat_page:[],
-            chats: async (p,page) => {
-                if (p.chat_page.length == 0) p.chat_page = [0,0]; // HOME / PAGE 0
-                if (p.id == undefined) p.id = async_browser.open(null, scrp_id, p.url);
-                if (page > p.chat_page[1]) while (p.chat_page[1] < page) {
-                    await (async_browser.exec(p.id, () => {
-                        window.scrollTo(0, document.body.scrollHeight);
-                    }));
-                    p.chat_page[1]++;
+            rand_word: function(z:number=1):string {
+                let out = '';
+                for (let n = 0; n < z; n++) out += this.rand('0123456789abcdefghijklmnopqrstuvwxyz      \n', 20).replaceAll('\n','<br>');
+                return out;
+            },
+            rand_chat: function(n:number=0, parent?:data):data {
+                let o:data = {
+                    favicon: (61440+Math.floor(Math.random()*2303)).toString(16),//'f'+this.rand('0123456789abcdef',3),
+                    favicon_flag: 2,
+                    name: this.rand_word().replaceAll('<br>',''),
+                    data: this.rand_word(5),
+                    summ: this.rand_word().replaceAll('<br>',''),
+                    info: this.rand_word().replaceAll('<br>',''),
+                    date: new Date(Number(new Date())-(5000000-Math.random()*10000000)),
+                    document: [],
+                    children: [],
+                    page: ['test',Math.random()<0.5?'sub':'lang'],
                 }
-                let pass = {
-                    fa: fa,
-                    page: page,
-                    /*parse: (doms:HTMLElement[]):HTMLElement[] => {
-                        return [];//doms.filter(d => !d.hasAttribute('data-page'));
-                    }*/
-                };
-                let out:scrape_chat[] = await (async_browser.wait<scrape_chat[]>(p.id, `[role="main"]>div>div>div>div+div>div>div:last-child>div>div:last-child>div div[aria-labelledby]>div>div>div>div>div>div:not([data-0]):not(:first-child)>div>div:not([data-page])`, doms => {
-                    let out:scrape_chat[] = [];
-                    for (const dom of doms) {
-                        dom.setAttribute('data-page', String(pass.page));
-                        let sec = dom.querySelectorAll<HTMLDivElement>(':scope>div');
-                        let time = Array.from(sec[1].querySelectorAll(':scope>div>div:nth-child(2)>div>div:nth-child(2) div>span:nth-last-child(3) [attributionsrc] span[aria-labelledby]>span>span')).reduce<[string,number][]>((a,b)=>{
-                            let style = window.getComputedStyle(b);
-                            return [...a, ...(style.position=='relative'?
-                                [[b instanceof HTMLElement ? b.innerText : '', Number(style.order)]]
-                                :[])
-                            ] as [string,number][];
-                        },[]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).join('');
-                        let summ = '';
-                        let data = Array.from(sec[2].querySelectorAll(':scope>div')).map(x => {
-                            let imgs = Array.from(x.querySelectorAll('img'));
-                            if (imgs.length) {
-                                return imgs.map(y=>{
-                                    if (y.src.startsWith('https://static.xx.fbcdn.net/images/emoji.php')) return `<text class="emoji">${Array.from(y.alt).map(c=>{
-                                        let cd = c.codePointAt(0);
-                                        summ += c;
-                                        if (cd && cd in pass.fa) return String.fromCodePoint(pass.fa[cd]);
-                                        return c;
-                                    }).join('')}</text>`;
-                                    summ += `<text class="summ_sent">image</text>`;
-                                    return `<img src="${y.src}"></img><br>`
-                                }).join('');
-                            } else {
-                                summ += (x as HTMLElement).innerText??'';
-                                return (x as HTMLElement).innerText??'';
-                            }
-                        }).join('<br>');
-                        out.push({
-                            type:'',
-                            user:{
+                if (o.document) for (let i = 0; i < (n > 0 ? Math.random()*5 : 0); i++) o.document.push(this.rand_chat(n-1, o)); 
+                if (o.children) for (let i = 0; i < (n > 0 ? Math.random()*5 : 0); i++) {
+                    let c = this.rand_chat(0, o);
+                    if (c.info) c.info = c.info.slice(0,Math.floor(0.5*Math.random()*(c.info?.length??0)));
+                    o.children.push(c);
+                }
+                if (parent) o.parent = parent;
+                return o;
+            }
+        },
+        /**
+         * ### Facebook Scraper
+         * By Jason C. D'Souza
+         * - `home #N?` - Home Posts
+         * - `gc #N?` - Group chats
+         * - `chat ID #PAGE` - Chats
+         */
+        facebook: {
+            session: {
+                home: {id: -1, act:-1, scroll:0, last_scroll:0 },
+                chat: {id: -1, act:-1, scroll:0, img_url:'', img_alt:'' },
+            },
+            get: async function(this:scrape, page) {
+                /**
+                 * ### Home Page
+                 * - act
+                 *   - `-1` - Doesnt exists
+                 *   - `0` - Is at home page
+                 *   - `1` - Is scrapping posts
+                 *   - `2` - Is at comments area
+                 *   - `3` - Is scrapping comments
+                 * - scroll - Current scroll page of act 0 and 1
+                 * - last_scroll - Scroll amount of home before leaving
+                 */
+                let home = this.session.home! as {id:number,act:-1|0|1|2|3,scroll:number,last_scroll:number};
+                let chat = this.session.chat! as {id:number,act:-1|0|1|2|3,scroll:number,img_url:string,img_alt:string};
+
+                if (page.length > 1 && page[0] == 'home-comment' && !isNaN(Number(page[1])) && !isNaN(Number(page[2]))) {
+                    // Ensure that home session is running
+                    await waitUntil(()=>[0,2].includes(home.act));
+                    if (home.act == 2) await (async_browser.wait<boolean>(home.id, '[aria-label="Close"]', doms=>{
+                        doms.forEach(x=>x.click());
+                        return true;
+                    }));
+                    home.act = 3;
+                    // Parse data
+                    let pagen=Number(page[1]), id=Number(page[2]);
+                    let pass = { pagen:pagen, id:id };
+                    console.log('Scroll data into view');
+                    // Scroll data into view
+                    await (async_browser.exec(home.id, ()=>{
+                        let dom = document.querySelector(`[data-page="${pass.pagen}"][data-id="${pass.id}"]`);
+                        if (dom) dom.scrollIntoView();
+                    }, pass));
+                    console.log('Click comments');
+                    // Click comments
+                    await (async_browser.wait<boolean>(home.id, `[data-page="${pagen}"][data-id="${id}"]>div>div>div>div>div:not([data-0]):not(:first-child)>div>div>div:nth-child(4)>div>div>div>div>div:not(:last-child)>div>div:last-child>div:nth-child(2)>span>div`, doms => {
+                        doms[0].click();
+                        return true;
+                    }));
+                    console.log('Read comments');
+                    // Read comments
+                    let out:data[] = await (async_browser.wait<data[]>(home.id, '[role="dialog"]:not([aria-label="Notifications"])>div>div>div>div:nth-child(2)>div:nth-child(2)>div>div>div:nth-child(2)>div>div:nth-child(2)>div:nth-child(3)>div:not([class])', doms => {
+                        let out:data[] = [];
+                        for (const dom of doms) {
+                            let main = dom.querySelector<HTMLDivElement>('[role="article"]');
+                            if (main == null) continue;
+                            let name = main.querySelector<HTMLSpanElement>(':scope>div:nth-child(2)>div:first-child>div>div:first-child>div:first-child>span')?.innerText??'';
+                            let label = main.getAttribute('aria-label')??'';
+                            let time = label.slice(12+name.length);
+                            let data_dom = main.querySelector<HTMLDivElement>(':scope>div:nth-child(2)>div:first-child>div>div:first-child>div:first-child>div:last-child');
+                            let cont = main.querySelector<HTMLDivElement>(':scope>div:nth-child(2)>div:nth-child(2)>div>div:not(.html-div)');
+                            let videos = cont?.getElementsByTagName('video')??[];
+                            let images = cont?.getElementsByTagName('img')??[];
+
+                            let data = data_dom?.innerHTML??'';
+                            let summ = data_dom?.innerText??'';
+                            for (const vid of videos) { data += `<video src="${vid.src}"/>`; summ += `[video]`; }
+                            for (const img of images) { data += `<img src="${img.src}"/>`; summ += `[${img.alt??'image'}]`; }
+
+
+                            out.push({
+                                favicon: main.querySelector(':scope>div:first-child>span>a svg image')?.getAttribute('xlink:href')??'',
+                                favicon_flag: 1,
+                                name: name,
+                                info: time,
+                                data: data,
+                                summ: summ,
+                                date:   time == 'about a minute ago' ? new Date(Number(new Date()) - 1000*60) :
+                                        time == 'a day ago' ? new Date(Number(new Date()) - 1000*60*60*24) :
+                                        time.endsWith(' minutes ago') ? new Date(Number(new Date()) - Number(time.slice(0,-12))*1000*60) :
+                                        time.endsWith(' hours ago') ? new Date(Number(new Date()) - Number(time.slice(0,-10))*1000*60*60) :
+                                        time.endsWith(' days ago') ? new Date(Number(new Date()) - Number(time.slice(0,-9))*1000*60*60*24) :
+                                        new Date(),
+                            });
+                        }
+                        return out;
+                    }));
+
+                    home.act = 2;
+                    return out;
+                } else if (page.length == 0 || page[0] == 'home') { // home 
+                    console.log('GOING HOME');
+                    await waitUntil(()=>[-1,0,2].includes(home.act));
+                    console.log('CAN GO ', home.act);
+                    let p_act = home.act; home.act = 1;
+                    // Variables
+                    let pagen:number = page.length > 1 ? Number(page[1]) : home.scroll;
+                    home.id = home.id>-1 ? home.id : async_browser.open(null, scrape_id, 'https://facebook.com/');
+                    let pass = { fa:fa, pagen:pagen, id:home.id, last_scroll:home.last_scroll };
+                    // Deal with previous session activity
+                    if (p_act == 2) await (async_browser.wait<boolean>(home.id, '[aria-label="Close"]', doms=>{
+                        doms.forEach(x=>x.click());
+                        window.scrollTo(0,pass.last_scroll);
+                        return true;
+                    }, pass));
+                    // Scroll to part
+                    while (pagen > home.scroll) {
+                        home.last_scroll = await (async_browser.exec<number>(home.id, ()=>{
+                            window.scrollTo(0,document.body.scrollHeight);
+                            return window.scrollY;
+                        }));
+                        home.scroll++;
+                    }
+                    // Scrape
+                    let out:data[] = await (async_browser.wait<data[]>(home.id, '[role="main"]>div>div>div>div+div>div>div:last-child>div>div:last-child>div div[aria-labelledby]>div:not([data-page])', doms => {
+                        //                                                  [role="main"]>div>div>div>div+div>div>div:last-child>div>div:last-child>div div[aria-labelledby]>div>div>div>div>div>div:not([data-0]):not(:first-child)>div>div:not([data-page])', doms => {
+                        let dat:data[] = [];
+                        let id = 0;
+                        for (const dom of doms) {
+                            // Parse element
+                            let sec = dom.querySelectorAll<HTMLDivElement>(':scope>div>div>div>div>div:not([data-0]):not(:first-child)>div>div>div');
+                            if (sec.length < 4) continue;
+                            let time = Array.from(sec[1].querySelectorAll(':scope>div>div:nth-child(2)>div>div:nth-child(2) div>span:nth-last-child(3) [attributionsrc] span[aria-labelledby]>span>span')).reduce<[string,number][]>((a,b)=>{
+                                let style = window.getComputedStyle(b);
+                                return [...a, ...(style.position=='relative'?
+                                    [[b instanceof HTMLElement ? b.innerText : '', Number(style.order)]]
+                                    :[])
+                                ] as [string,number][];
+                            },[]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]).join('');
+                            dom.setAttribute('data-page', String(pass.pagen));
+                            dom.setAttribute('data-id', String(id));
+                            let comments = (sec[3].querySelector<HTMLDivElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:last-child>div:nth-child(2)')?.innerText??'0').split(' ')[0];
+                            // Skip sponsorships
+                            if (time == 'S') continue; 
+                            // Body scapping   
+                            let summ = '';
+                            let data = Array.from(sec[2].querySelectorAll(':scope>div')).map(x => {
+                                let imgs = Array.from(x.querySelectorAll('img'));
+                                if (imgs.length) {
+                                    return imgs.map(y=>{
+                                        if (y.src.startsWith('https://static.xx.fbcdn.net/images/emoji.php')) return `<text class="emoji">${Array.from(y.alt).map(c=>{
+                                            let cd = c.codePointAt(0);
+                                            summ += c;
+                                            if (cd && cd in pass.fa) return String.fromCodePoint(pass.fa[cd]);
+                                            return c;
+                                        }).join('')}</text>`;
+                                        summ += `<text class="summ_sent">${y.getAttribute('alt')??'image'}</text>`;
+                                        return `<img src="${y.src}"></img><br>`
+                                    }).join('');
+                                } else {
+                                    summ += (x as HTMLElement).innerText??'';
+                                    return (x as HTMLElement).innerText??'';
+                                }
+                            }).join('<br>');
+                            // Add to data
+                            dat.push({
+                                // Head
+                                favicon: sec[1].querySelector<SVGImageElement>(':scope>div>div:nth-child(1) svg image')?.getAttribute('xlink:href')??'',
+                                favicon_flag: 1,
                                 name: sec[1].querySelector<HTMLAnchorElement>(':scope>div>div:nth-child(2)>div>div:first-child [attributionsrc]')?.innerText??'',
-                                prof: sec[1].querySelector<SVGImageElement>(':scope>div>div:nth-child(1) svg image')?.getAttribute('xlink:href')??'',
-                                nick: sec[1].querySelector(':scope>div>div:nth-child(2)>div>div:nth-child(2)>span>div>span:last-child [title="Shared with Custom"]') ? 'friend' : 'public',
-                            },
-                            data: data,
-                            summ: summ,
-                            date:   time.toLowerCase() == 'just now' ? new Date() :
+                                info: sec[1].querySelector(':scope>div>div:nth-child(2)>div>div:nth-child(2)>span>div>span:last-child [title="Shared with Custom"]') ? 'friend' : 'public',
+                                date: time.toLowerCase() == 'just\u00A0now' ? new Date() :
                                     time.endsWith('s') ? new Date(new Date().getTime() - Number(time.slice(0,-1))*1000) :
                                     time.endsWith('m') ? new Date(new Date().getTime() - Number(time.slice(0,-1))*1000*60) :
                                     time.endsWith('h') ? new Date(new Date().getTime() - Number(time.slice(0,-1))*1000*60*60) :
                                     time.startsWith('Yesterday') ? new Date(`${new Date().getMonth()+1}/${new Date().getDate()}/${new Date().getFullYear()} ${time.slice(12)}`) :
                                     new Date(time.replace(/\sat\s/g,` ${new Date().getFullYear()} `).replaceAll('AM',' AM').replaceAll('PM',' PM')),
-                            time: time,
-                            reacts: [{
-                                icon: 'f164',
-                                text: 'Reactions',
-                                data: sec[3].querySelector<HTMLSpanElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:first-child>div:last-child>span>div>span[aria-hidden="true"]')?.innerText??'0',
-                            },{
-                                icon: 'f086',
-                                text: 'Comments',
-                                data: (sec[3].querySelector<HTMLDivElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:last-child>div:nth-child(2)')?.innerText??'0').split(' ')[0],
-                            },{
-                                icon: 'f1e0',
-                                text: 'Share',
-                                data: (sec[3].querySelector<HTMLDivElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:last-child>div:nth-child(3)')?.innerText??'0').split(' ')[0],
-                            }]
-                        });
-                    }
+                                // Body
+                                data: data,
+                                summ: summ,
+                                // Foot
+                                document: [],
+                                children: [{
+                                    favicon: 'f164',
+                                    favicon_flag: 2,
+                                    name: 'Reactions',
+                                    info: sec[3].querySelector<HTMLSpanElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:first-child>div:last-child>span>div>span[aria-hidden="true"]')?.innerText??'0',
+                                },{
+                                    favicon: 'f086',
+                                    favicon_flag: 2,
+                                    name: 'Comments',
+                                    info: comments,
+                                    document: comments == '0' ? [] : [
+                                        {page:['facebook','home-comment',String(pass.pagen),String(id)],load:true},
+                                        //{favicon:'f599',favicon_flag:2,name:'Test',data:'Test',info:'Test'}
+                                    ]
+                                },{
+                                    favicon: 'f1e0',
+                                    favicon_flag: 2,
+                                    name: 'Share',
+                                    info: (sec[3].querySelector<HTMLDivElement>(':scope>div>div>div>div>div:not(:last-child)>div>div:last-child>div:nth-child(3)')?.innerText??'0').split(' ')[0],
+                                }],
+                                page: ['test',Math.random()<0.5?'sub':'lang']
+                            });
+                            id++;
+                        }
+                        return dat;
+                    }, pass));
+                    out.push({ page:['facebook', 'home', String(pagen+1)], load:true })
+                    home.act = 0;
                     return out;
-                }, pass));
-                //async_browser.tabs[p.id].view.webContents.openDevTools();
-                return out;
-            },
-            /*
-            get_groups_q: '[aria-label="Chats"] [data-virtualized="false"] [role="link"]',
-            get_groups: (n,doms) => {
-                let out:scrape_group[] = [];
-                for (let d of doms) {
-                    let prof = d.querySelector<HTMLImageElement>('img[referrerpolicy="origin-when-cross-origin"]');
-                    let name = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>span>span');
-                    let prev = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:first-child');
-                    let last = d.querySelector<HTMLSpanElement>(':scope>div:first-child>div:first-child>div:nth-child(2)>div>div>div>div:last-child>span:last-child');
-                    if (prof == null || name == null || prev == null || last == null) continue;
-                    out.push({
-                        link: d.getAttribute('href')??'',
-                        prof: prof.src,
-                        name: name.innerText,
-                        prev: prev.innerText.replace(/\s+/g,' '),
-                        last: last.innerText.split('\n')[0],
-                        on: d.getAttribute('aria-current')=='page',
-                    });
-                }
-                return out;
-            },
-            get_chats_q: '[role=main]>div>div>div>div>div>div+div>div>div>div>div>div>div>div>div>div>div>div>div [role=row]:last-child>div:first-child>div',
-            get_chats: (n,doms) => {
-                let out:scrape_chat[] = [];
-                doms = doms.slice(1).reverse();
-                var img:HTMLImageElement|null = null;
-                for (const d of doms) {
-                    let main = d.querySelector(':scope>div[class]:not([role=presentation])');
-                    if (main == null) {
-                        out.push({
-                            type: 'status',
-                            user: null,
-                            data: d.querySelector<HTMLDivElement>(':scope>div[class][role=presentation]>div:first-child>div:first-child')?.innerText ?? '',
-                        });
-                        continue;
-                    }
-                    let q:{ <T extends Element>(q: string, cont: true): T[];
-                            <T extends Element>(q: string, cont?: false): T | null;
-                    } = <T extends Element>(q,cont=false) => cont ? Array.from(main.querySelectorAll<T>(`:scope>div:nth-child(2)>div:first-child${q}`)) : main.querySelector<T>(`:scope${q}`);
-                    
-                    img = q('>div:first-child img[style="border-radius: 50%;"]')??img;
-                    let attach = q<HTMLAnchorElement>(' [aria-label^="Open Attachment, "]');
-                    let type =  q('>span:first-child') ? 'unsent' :
-                                q(' [aria-label="Group audio call"]') ? 'audio call' :
-                                q(' [aria-label="Group video call"]') ? 'video call' :
-                                q(' [aria-label="Live Location"]') ? 'location' :
-                                q(' [aria-label="Audio scrubber"]') ? 'audio' :
-                                '';
-                    let to_html = (dom:HTMLElement|null) => {
-                        let out = '';
-                        if (dom != null)
-                            for (const child of dom.childNodes)
-                                out += !('tagName' in child) ? (child.textContent??'').replace(/\n/g,'<br>') :
-                                    child instanceof HTMLSpanElement && child.getAttribute('role') == 'gridcell' ? `<a data-link="${child.querySelector('a')?.getAttribute('href')}">${to_html(child.querySelector('a'))}</a>` :
-                                    child instanceof HTMLSpanElement && child.querySelector('img') != null ? `<img src="${child.querySelector('img')?.src}"></img>` :
-                                    '';
-                        return out;
-                    };
-                    
-                    let chat = {
-                        type: type,
-                        user: q('>div:first-child')?.getAttribute('style')?.includes('--paddingEnd') && img != null ? {
-                            name: img.getAttribute('alt')??'Unknown',
-                            prof: img.getAttribute('src')??'',
-                            nick: main?.previousSibling instanceof HTMLElement ? main.previousSibling.innerText : '',
-                        } : null,
-                        data: attach != null ? `<a href="${attach.getAttribute('href')}">${attach.getAttribute('aria-label')?.slice(17)}</a>` :
-                            q(' span>[dir="auto"]',true).length ? to_html(q<HTMLElement>(' span>[dir="auto"]',true)[0]) :
-                            Array.from(q<HTMLImageElement>(' img',true)).map(i=>`<img src="${i.src}"></img>`).join(''),
-                    };
-                    if (out.length && out[out.length-1].user?.name == chat.user?.name && !out[out.length-1].type.length) {
-                            out[out.length-1].data = chat.data+'<br>'+out[out.length-1].data;
-                    } else out.push(chat);
-                }
-                out.reverse();
-                return out;
-            },*/
-        }
-    };
+                } else if (page.length > 1 && page[0] == 'chat') {
+                    let pagen:number = page.length > 2 ? Number(page[2]) : chat.scroll;
+                    chat.id = chat.id>-1 ? chat.id : async_browser.open(null, scrape_id, `https://facebook.com/messages/t/${page[1]}`);
+                    let pass = {pagen:pagen,image_url:chat.img_url,image_alt:chat.img_alt};
 
-    /* ----- PROFILE ----- */
+                    console.log(`${pagen} > ${chat.scroll}`);
+                    while (pagen > chat.scroll) {
+                        await (async_browser.wait<boolean>(home.id, ('[role=main]>div>div>div>div>div>div>div>div>div>div>div>div>div>div[aria-label]>div>div[role="none"]'), doms=>{
+                            for (const dom of doms) dom.scrollTo(0,0);
+                            document.body.style.background = 'red';
+                            return true;
+                        }));
+                        chat.scroll++;
+                    }
+                    // Get all chats
+                    let out:data[] = (await async_browser.wait<data[]>(chat.id, '[role=main]>div>div>div>div>div>div+div>div>div>div>div>div>div>div>div>div>div>div>div [role=row]:last-child>div:first-child>div:not([data-page])', doms => {
+                        let out:data[] = [];
+                        let img:HTMLImageElement = new Image();
+                        img.src = pass.image_url;
+                        img.alt = pass.image_alt;
+                        doms.reverse();
+                        for (const d of doms) {
+                            d.setAttribute('data-page', String(pass.pagen));
+                            let main = d.querySelector(':scope>div[class]:not([role=presentation])');
+                            let img_tmp = main?.querySelector<HTMLImageElement>(':scope>div:first-child img[style="border-radius: 50%;"]');
+                            if (img_tmp) img = img_tmp;
+                            out.push({
+                                favicon: img == null ? '' : img.src, favicon_flag:1,
+                                name: img == null ? 'Unknown' : img.getAttribute('alt')??'',
+                                data: main?.querySelector<HTMLDivElement>(':scope>div:nth-child(2)>div:first-child>div:first-child')?.innerText??'',
+                            });
+                        }
+                        out.reverse();
+                        for (let n = 1; n < out.length; n++) {
+                            if (out[n].name == out[n-1].name) {
+                                out[n-1].data = `${out[n-1].data}<br>${out[n].data}`;
+                                out.splice(n,1);
+                                n--;
+                            }
+                        }
+                        return out;
+                    }, pass));
+                    out[0] = {
+                        page:['facebook','chat',page[2],String(pagen+1)],
+                        load:true,
+                        parse:1,
+                    };
+                    if (out.length > 2) {
+                        chat.img_url = out[1].favicon??chat.img_url;
+                        chat.img_alt = out[1].name??chat.img_alt;
+                    }
+
+                    return out;
+                }
+                return []
+            },
+        },
+        /**
+         * ### Language Scrapper
+         */
+        lang: {
+            session: {
+                chatgpt: {id: -1, act:-1, scroll:0 },
+            },
+            get: async function(this:scrape, page) {
+                // This case scraps from chatgpt, format is: translate <language> <data id>
+                if (page.length > 1 && page[0] == 'translate') {
+                    let chatgpt = this.session.chatgpt! as {id:number,act:-1|0|1|2|3,scroll:number};
+                    // Ensure that chatgpt session is running
+                    await waitUntil(()=>[0].includes(chatgpt.act));
+                    chatgpt.act = 1;
+                    // Variables
+                    let pagen:number = page.length > 2 ? Number(page[2]) : chatgpt.scroll;
+                    chatgpt.id = chatgpt.id>-1 ? chatgpt.id : async_browser.open(null, scrape_id, 'https://chatgpt.com/');
+                    //let pass = { pagen:pagen, id:chatgpt.id };
+                }
+                return [];
+            },
+        }
+        
+    };
+    let data_focus:data|null = null;
     let profile:user = {
         name: 'Jason',
-        tabs:[
-            // Saves
-            {favi:'e0bb',icon:true,text:'Saves',cont:'saves'},
-            // Facebook
-            {favi:'f09a',icon:true,text:'Facebook',cont:'facebook',tabs:[
-                // Group chats
-                {cont:'facebook'}
+        date: '%b %d, %Y %H:%M (%R)',
+        data: [
+            {name:'School',page:['browser','https://usa.edu.ph/'],favicon:'https://usa.mastersofterp.in/IMAGES/logo.png',children:[
+                {favicon:'f0ac',favicon_flag:2,name:'Sites',children:[
+                    {name:'SanAg',page:['browser','https://usa.neolms.com/'],favicon:'https://usa.mastersofterp.in/IMAGES/logo.png'},
+                    {name:'Mastersoft',page:['browser','https://usa.mastersofterp.in/default.aspx'],favicon:'https://www.mastersofterp.com/images/favicon.ico'},
+                    {name:'Edusuite',page:['browser','https://www.edusuite.asia/'],favicon:'https://static.wixstatic.com/media/d50e11_8958b651a8064281b65730f8d88102cb%7Emv2.png/v1/fill/w_192%2Ch_192%2Clg_1%2Cusm_0.66_1.00_0.01/d50e11_8958b651a8064281b65730f8d88102cb%7Emv2.png'},
+                ]},
+                {favicon:'f63d',favicon_flag:2,name:'Classes',children:[
+                    {favicon:'f8b1',favicon_flag:2,name:'CpE 311 - Operating System',document:[{page:['facebook','chat','8001632903254030'],load:true,parse:1}]},
+                    {favicon:'e15a',favicon_flag:2,name:'CpE 315 - Logic Circuit',document:[{page:['facebook','chat','8732909096733763'],load:true,parse:1}]},
+                    {favicon:'f78a',favicon_flag:2,name:'CpE 318 - Feedback',document:[{page:['facebook','chat','8012298325530894'],load:true,parse:1}]}
+                ]},
+                {favicon:'f500',favicon_flag:2,name:'Groups',children:[
+                    {favicon:'f808',favicon_flag:2,name:'Homo Genius',page:['facebook','chat','24744106065235956']},
+                    {favicon:'f06d',favicon_flag:2,name:'Mga Ka-Linte Boys',page:['facebook','chat','9324936020857360']}
+                ]},
+                {favicon:'e533',favicon_flag:2,name:'Classmates',children:[
+                    {name:'Prestige Ace Seliedo',page:['facebook','page','7106254546141917'],favicon:'https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/432362057_2192739377736690_7728304573852027316_n.jpg?stp=dst-jpg_p100x100_tt6&_nc_cat=101&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeEod7I8rt8eZI_6Hk0QjXqFIC7HqhizMfogLseqGLMx-kpDo0N0TXC_Bz1xfuWHKNTrvTEdSJKz91iRs5ryYNOW&_nc_ohc=p_lWCtiEegkQ7kNvgEI_7II&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=ARqPaF4NTsSC-TjN70QemC3&oh=00_AYBI3RZKQUNaqmmk0iO1pEMP-5vi2M5UetTMEVky_lugqQ&oe=67643EEE'},
+                    {name:'Patrick Raymund Hortillas',page:['facebook','page','7177560485655335'],favicon:'https://scontent.fceb2-1.fna.fbcdn.net/v/t39.30808-1/336283585_541312681323802_4301575506319880601_n.jpg?stp=c0.0.1536.1536a_dst-jpg_s100x100_tt6&_nc_cat=103&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeHrRRwdU0XpK5o8K5qrzS3SGdasVNWHnb4Z1qxU1YedvhSggzAYVsU7s6KgAcF3JW_tKEW9xGmo_R8Af6lPIJ44&_nc_ohc=4exPyyRQ7K4Q7kNvgGJwPao&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-1.fna&_nc_gid=ARqPaF4NTsSC-TjN70QemC3&oh=00_AYCY98qvy-oSpKKdZ_d2AFrYhBgS1WLPzGDPZWecYcWVuA&oe=67642978'},
+                    {name:'Brent Lachica',page:['facebook','page','7251434294983137'],favicon:'https://scontent.fceb2-2.fna.fbcdn.net/v/t39.30808-1/426600487_2120538914989409_2738855524291754853_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=110&ccb=1-7&_nc_sid=0ecb9b&_nc_eui2=AeFV-WSiA1ZgtmdLzJ1PMV4f4YhiPnF7-3LhiGI-cXv7cvv7EzU1DG8zp8YooFNUfQFiWA3a0xeZSVo8YJQOF_CR&_nc_ohc=UTVPKyLL7JsQ7kNvgEEznnk&_nc_ad=z-m&_nc_cid=0&_nc_zt=24&_nc_ht=scontent.fceb2-2.fna&_nc_gid=ARqPaF4NTsSC-TjN70QemC3&oh=00_AYDSr05_WSIK2Z9rmzjxG_vZJOGji56Fbk271kOmBKaNZQ&oe=676459DE'},
+                ]}
+            ]},//{],load:true}]},
+            {favicon:'f588',favicon_flag:2,name:'Entertainment',children:[
+                {favicon:'f09a',favicon_flag:2,name:'Facebook',document:[
+                    {page:['facebook','home'],load:true}
+                ]},
+                {favicon:'https://9gag.com/favicon.ico',name:'9Gag',page:['9gag','home']},
+                {favicon:'f167',favicon_flag:2,name:'Youtube',page:['youtube','home']},
+            ], document:[{page:['test','lang'],load:true}]},
+            {name:'LinguaLearn',favicon:'f1ab',favicon_flag:2,page:['lingua'],children:[
+                {name:'Dictionary',favicon:'e0c0',favicon_flag:2,page:['lingua','dict']},
+                {name:'Lession',favicon:'e53d',favicon_flag:2,page:['lingua','lession']}
             ]}
         ],
-        date: '%b %d, %Y %H:%M (%R)',
     };
-    // Variables
-    //let main_id = async_browser.new_win();
-    let scrp_id = async_browser.new_win/*([0,-async_browser.size[1],async_browser.size[0]*2,async_browser.size[1]]);/*/([800,0,800,1600]);
-    async_browser.wins[scrp_id].show = true;
-    //var scraps:{[site:string]:number} = {};
-    let def_url = async_browser.default_url;
+    let data_keys:{[key:number]:data} = {};
+    let data_keys_inc = 0;
 
-    /* ----- Shortcuts ----- */
-    var q = <T extends Element>(x:string,dom:Element|Document=document)=>dom.querySelector<T>(x);
-    var Qf = <T extends Element>(x:string,dom:Element|Document=document)=>((f:(e:T,key:number,parent:NodeListOf<Element>)=>void)=>dom.querySelectorAll<T>(x).forEach(f));
-    var Q = <T extends Element>(x:string,dom:Element|Document=document)=>Array.from(dom.querySelectorAll<T>(x));
-
-    function button(para:tab, add?:{circle:boolean}) {
-        return /*html*/`<button ${para.on?'class="on"':''} ${para.cont?`data-cont="${para.cont}"`:''} ${!para.favi?'data-empty="true" data-active="false"':''}>
-            ${para.icon||!para.favi?/*html*/`<span ${!para.favi?'class="spin"':''}>&#x${para.favi??'f110'};</span>`:/*html*/`<img ${add?.circle ? 'class="circle"' : ''} src="${para.favi}"></img>`}
-            ${para.text?/*html*/`<text>${para.text}</text>`:''}
-        </button>`;
+    /* ----- Data processing ----- */
+    function register_data(data:data) {
+        if (data.id != undefined) return;
+        let id = data_keys_inc++;
+        data_keys[id] = data;
+        data.id = id;
     }
-    function formatDate(date:Date, format:string):string {
+    function parent_data(data:data[]=profile.data, parent:data|null=null) {
+        for (const d of data) {
+            register_data(d);
+            if (parent != null) d.parent = parent;
+            if (d.children) parent_data(d.children, d);
+            if (d.document) parent_data(d.document, d);
+        }
+    }
+    parent_data();
+    
+    /* ----- Shortcuts ----- */
+    function q<T extends Element>(x:string,dom:Element|Document=document) {
+        return dom.querySelector<T>(x)
+    }
+    function Q<T extends Element>(x:string,dom:Element|Document=document){
+        return (f:(e:T,key:number,parent:NodeListOf<Element>)=>void) =>
+            dom.querySelectorAll<T>(x).forEach(f);
+    }
+    function waitUntil(conditionFn, interval = 100) {
+        return new Promise<void>(res => {
+          const checkCondition = () => {
+            if (conditionFn()) res();
+            else setTimeout(checkCondition, interval);
+          };
+          checkCondition(); // Start checking
+        });
+      }
+    /** Converts Date Object into prefered date format */
+    function format_date(date:Date, format:string):string {
         if (isNaN(Number(date))) return '';
         // https://www.w3schools.com/python/python_datetime.asp
         const weeks = ['Sunday','Monday','Tuesday','Wenesday','Thursday','Friday','Saturday'];
@@ -365,95 +642,15 @@ let client_code = async (async_browser:Browser, events:client_events) => {
             '%M': String(date.getMinutes()).padStart(2, '0'),
             '%S': String(date.getSeconds()).padStart(2, '0'),
             '%f': String(date.getMilliseconds()).padStart(6, '0'),
-            '%R': def < 1000 ? 'Just now' :
-                  def < 60000 ? `${Math.round(def/1000)}s ago` :
-                  def < 3600000 ? `${Math.round(def/60000)}m ago` :
-                  def < 86400000 ? `${Math.round(def/3600000)}h ago` :
-                  `${Math.round(def/86400000)}d ago`,
-
+            '%R': Math.abs(def) < 1000 ? 'Just now' :
+                Math.abs(def) < 60000 ? `${Math.abs(Math.round(def/1000))}s ${def>0?'ago':'soon'}` :
+                Math.abs(def) < 3600000 ? `${Math.abs(Math.round(def/60000))}m ${def>0?'ago':'soon'}` :
+                Math.abs(def) < 86400000 ? `${Math.abs(Math.round(def/3600000))}h ${def>0?'ago':'soon'}` :
+                `${Math.abs(Math.round(Math.abs(def)/86400000))}d ${def>0?'ago':'soon'}`,
         };
-        console.log(replacements);
         return format.replace(/%a|%A|%w|%d|%b|%B|%m|%y|%Y|%H|%I|%p|%M|%S|%f|%R/g, (match) => replacements[match]);
     }
-    function generate_tab(tabs:tab[]|null=null):string {
-        let out = '';
-        if (tabs == null) {
-            out += button({favi:'logo_gray.png', text:'Home'});
-            tabs = profile.tabs;
-        }
-        for (const tab of tabs) {
-            out += button(tab);
-            if (tab.tabs) out += /*html*/`
-                <div class="sub">
-                    ${generate_tab(tab.tabs)}
-                </div>
-            `;
-        }
-        return out;
-    }
-    function generate_chat(chat:scrape_chat):HTMLDivElement {
-        let out = document.createElement('div');
-        // HEAD
-        let head = document.createElement('div');
-        head.classList.add('head');
-        if (chat.user) {
-            let prof = document.createElement('img');
-            prof.src = chat.user.prof;
-            head.appendChild(prof);
-            let name = document.createElement('text');
-            name.classList.add('name');
-            name.innerText = chat.user.name;
-            if (chat.user.nick) {
-                let nick = document.createElement('span');
-                nick.innerText = chat.user.nick;
-                name.appendChild(nick);
-            }
-            head.appendChild(name);
-        }
-        if (chat.date || chat.time) {
-            let time = document.createElement('text');
-            time.classList.add('time');
-            console.log(chat.date, chat.time);
-            time.innerText = chat.date ? formatDate(chat.date, profile.date) : chat.time ? chat.time : '';
-            head.appendChild(time);
-        }
-        // REACTS
-        if (chat.reacts) {
-            let reacts = document.createElement('div');
-            reacts.classList.add('reacts');
-            for (const r of chat.reacts) {
-                let rb = document.createElement('button');
-                let e = document.createElement('span');
-                e.innerHTML = `&#x${r.icon};`;
-                rb.appendChild(e);
-                let t = document.createElement('text');
-                t.innerText = r.text;
-                rb.appendChild(t);
-                let p = document.createElement('p');
-                p.classList.add('num');
-                p.innerText = r.data;
-                rb.appendChild(p);
-                reacts.appendChild(rb);
-            }
-            head.appendChild(reacts);
-        }
-        out.appendChild(head);
-        // TODO ACTS
-        // BODY
-        let body = document.createElement('div');
-        body.classList.add('body');
-        body.innerHTML = chat.data;
-        out.appendChild(body);
-        // Summary
-        let summ = document.createElement('div');
-        summ.classList.add('summ');
-        let summt = document.createElement('text');
-        summt.innerHTML = chat.summ;
-        summ.appendChild(summt);
-        out.appendChild(summ);
-
-        return out;
-    }
+    /** Checks if html element is visible */
     async function is_visible(dom:HTMLElement):Promise<boolean> {
         return new Promise(res => {
             const observer = new IntersectionObserver((entries, observer) => {
@@ -464,78 +661,393 @@ let client_code = async (async_browser:Browser, events:client_events) => {
               }
             }, { threshold: 0.1 });
             observer.observe(dom);
-        });        
-    }
-    function update_loaders() {
-        // Update Dynamic Tabs
-        Qf<HTMLButtonElement>('#tabs button[data-active="false"][data-cont][data-empty]')(async d=>{
-            if (!(await is_visible(d))) return;
-            d.setAttribute('data-active', 'true');
-            let cont = d.getAttribute('data-cont')??'';
-            if (scrapers[cont].id == undefined) scrapers[cont].id = async_browser.open(null, scrp_id, scrapers[cont].url);
-            let tabs:scrape_group[] = await scrapers[cont].groups(scrapers[cont].id, 0);
-            let p = d.parentElement;
-            let parser = new DOMParser();
-            console.log(p, d, tabs);
-            for (const tab of tabs) {
-                let but = parser.parseFromString(button({
-                    text: tab.name,
-                    favi: tab.prof,
-                }, {circle:true}), 'text/html');
-                let but_dom = but.body.firstChild;
-                if (but_dom) p?.appendChild(but_dom);
-            }
-            p?.removeChild(d);
-        });
-        Qf<HTMLParagraphElement>('#chat p.loader[data-active="false"][data-cont][data-page]')(async d => {
-            if (!(await is_visible(d))) return;
-            d.setAttribute('data-active', 'true');
-            let scp = scrapers[d.getAttribute('data-cont')??''];
-            let page = Number(d.getAttribute('data-page'));
-            let chats:scrape_chat[] = await scp.chats(scp, page, fa);
-            let loader = document.createElement('p');
-            loader.classList.add('loader');
-            loader.setAttribute('data-active','false');
-            loader.setAttribute('data-cont', d.getAttribute('data-cont')??'');
-            loader.setAttribute('data-page', String(Number(d.getAttribute('data-page')??'0')+1));
-            Qf('#chat')(c=>{
-                c.removeChild(d);
-                for (const chat of chats) {
-                    console.log('ADDING', chat);
-                    c.appendChild(generate_chat(chat));
-                }
-                c.appendChild(loader);
-            });
-            update_loaders();
         });
     }
-    
-    // Tabs
-    Qf<HTMLDivElement>('#tabs')(d=>{
-        d.innerHTML = generate_tab();
-        d.onclick = async e => {
-            let f = e.target as HTMLElement|null;
-            while (f != d && f != null && !(f instanceof HTMLButtonElement)) f = f.parentNode as HTMLElement|null;
-            if (f == null) return;
-            Qf('#tabs button.on')(d=>{
-                if (d.nextElementSibling && d.nextElementSibling.classList.contains('sub') && d.nextElementSibling.contains(f)) {
-                    d.classList.add('group');
-                } else d.classList.remove('on');
-            });
-            f.classList.toggle('on');
-            if (f.hasAttribute('data-cont') && !f.hasAttribute('data-empty')) {
-                Qf('#chat')(d=>d.innerHTML='<p class="loader" data-active="false" data-cont="'+f.getAttribute('data-cont')+'"data-page="0"></p>');
-            }
-            update_loaders();
-        };
-    });
-    Qf('#chat')(d => d.addEventListener('scroll', update_loaders));
-    /*Qf<HTMLButtonElement>('#tabs button')(d=>d.onclick=()=>{
-        d.classList.toggle('on');
-        changed_tab();
-    });*/
 
-};
+    /* ----- Functions ----- */
+    /** Converts chat data into html elements */
+    function render_chat(ds:data[]):HTMLElement[] {
+        let out:HTMLElement[] = [];
+        for (const d of ds) {
+            let main = document.createElement('div');
+            if (d.load) main.classList.add('loader');
+            if (d.page) main.setAttribute('page', JSON.stringify(d.page));
+            if (d.id != undefined) main.setAttribute('data-id', String(d.id));
+            // Head
+            let head = document.createElement('div');
+            head.classList.add('head');
+            // Favicon
+            if (d.favicon) {
+                let favicon = document.createElement(d.favicon_flag == 2 ? 'span' : 'img');
+                favicon.classList.add('favicon');
+                if (d.favicon_flag == 1) favicon.classList.add('circle');
+                if (favicon instanceof HTMLSpanElement) favicon.innerHTML = `&#x${d.favicon};`;
+                else favicon.src = d.favicon;
+                head.appendChild(favicon);
+            }
+            // Name
+            if (d.name || d.info) {
+                let name = document.createElement('text');
+                name.classList.add('name');
+                name.innerText = d.name ?? '';
+                if (d.info) {
+                    let info = document.createElement('span');
+                    info.innerText = d.info;
+                    name.appendChild(info);
+                }
+                head.appendChild(name);
+            }
+            // Time
+            if (d.date) {
+                let date = document.createElement('text');
+                date.classList.add('time');
+                date.innerText = format_date(d.date, profile.date);
+                head.appendChild(date);
+            }
+            // Options
+            if (d.children) {
+                let opts = document.createElement('div');
+                opts.classList.add('options');
+                for (const opt of d.children) {
+                    let o = document.createElement('button');
+                    o.setAttribute('data-id', String(opt.id));
+                    o.addEventListener('click', () => {
+                        let a = o.classList.contains('active');
+                        for (const c of o.parentElement?.querySelectorAll(':scope>.active')??[]) c.classList.remove('active');
+                        if (a) o.classList.remove('active');
+                        else o.classList.add('active');
+                        load_page(a ? d.id! : opt.id!, o.parentElement?.parentElement?.parentElement?.querySelector(':scope>.foot') ?? undefined)
+                    });
+                    if (opt.favicon) {
+                        let i = document.createElement(opt.favicon_flag == 2 ? 'span' : 'img');
+                        if (i instanceof HTMLSpanElement) i.innerHTML = `&#x${opt.favicon};`;
+                        else i.src = opt.favicon; 
+                        if (opt.favicon_flag == 1) i.classList.add('circle');
+                        o.appendChild(i);
+                    }
+                    if (opt.name) {
+                        let n = document.createElement('text');
+                        n.innerText = opt.name;
+                        o.appendChild(n);
+                    }
+                    if (opt.info) {
+                        let i = document.createElement('p');
+                        i.classList.add('info');
+                        i.innerText = opt.info;
+                        o.appendChild(i);
+                    }
+                    opts.appendChild(o);
+                }
+                head.appendChild(opts);
+            }
+            // Body
+            main.appendChild(head);
+            let body = document.createElement('div');
+            body.classList.add('body');
+            body.innerHTML = d.data ?? '';
+            main.appendChild(body);
+            // Summary
+            let summary = document.createElement('div');
+            summary.classList.add('summ');
+            let sumt = document.createElement('text');
+            sumt.innerHTML = d.summ ?? '';
+            summary.appendChild(sumt);
+            main.appendChild(summary);
+            // End
+            out.push(main);
+            // Foot
+            if (d.document) {
+                for (const c of d.document) c.parent = d;
+                let foot = document.createElement('div');
+                foot.classList.add('foot');
+                let outr = render_chat(d.document);
+                for (const o of outr) foot.appendChild(o);
+                main.appendChild(foot);
+            }
+        }
+        return out;
+    }
+    /** Converts tabs data into html element */
+    function render_tabs(data:data[]|null=null):HTMLDivElement {
+        let out = document.createElement('div');
+        let s = document.createElement('div');
+        s.classList.add('scr');
+        for (const d of (data ?? profile.data)) {
+            let t = document.createElement('button');
+            if (d.id != undefined) t.setAttribute('data-id', String(d.id));
+            t.addEventListener('click', ()=>tab_focus(d));
+            if (d.render) {
+                t.classList.add('on');
+                if (d.render == 2) t.classList.add('group');
+            }
+            if (d.render) {
+                t.classList.add('on');
+                if (d.render == 2) t.classList.add('group');
+            }
+            if (d.favicon) {
+                let favicon = document.createElement(d.favicon_flag == 2 ? 'span' : 'img');
+                favicon.classList.add('favicon');
+                if (d.favicon_flag == 1) favicon.classList.add('circle');
+                if (favicon instanceof HTMLSpanElement) favicon.innerHTML = `&#x${d.favicon};`;
+                else favicon.src = d.favicon;
+                t.appendChild(favicon);
+            }
+            if (d.name) {
+                let name = document.createElement('text');
+                if (!top) name.classList.add('name');
+                name.innerText = d.name ?? '';
+                if (d.info && !top) {
+                    let info = document.createElement('span');
+                    info.innerText = d.info;
+                    name.appendChild(info);
+                }
+                t.appendChild(name);
+            }
+            if (d.info) {
+                let info = document.createElement('p');
+                info.classList.add('info');
+                info.innerText = d.info;
+                t.append(info);
+            }
+            
+            if (d.render) {
+                if (s.children.length) out.appendChild(s);
+                s = document.createElement('div');
+                s.classList.add('scr');
+                out.appendChild(t);
+                if (d.children) {
+                    let c = render_tabs(d.children);
+                    c.classList.add('sub');
+                    out.appendChild(c);
+                }
+            } else s.append(t);
+        }
+        if (s.children.length) out.appendChild(s);
+        //out.appendChild(s);
+        if (data == null) {
+            let dom = q('#tabs');
+            if (dom) {
+                dom.innerHTML = '';
+                dom.appendChild(out);
+                let n = out.children.length;
+                for (let i = 0; i < n; i++) dom.appendChild(out.children[0]);
+                dom.removeChild(dom.children[0]);
+            }
+        }
+        return out;
+    }
+    /** Capture new data */
+    async function load_page(id:number, chat?:HTMLDivElement) {
+        let d = data_keys[id];
+        let parent = !d.parent ? profile.data : d.parent.document && d.parent.document.indexOf(d) != -1 ? d.parent.document : d.parent.children;
+        if (parent == undefined) throw new Error(`ID ${id}: Has no parent`);
+        let index = parent.indexOf(d);
+        if (index == -1) { console.log(d, parent); throw new Error(`ID ${id}: Cant find index`); }
+        let dom_chat = chat ?? q<HTMLDivElement>('#chat'), dom_site = q<HTMLDivElement>('#site'), dom_data = q<HTMLDivElement>(`[data-id="${d.id}"]`);
+        if (dom_chat == null || dom_site == null || dom_data == null || dom_data.parentElement == null) return;
+        let path = q<HTMLDivElement>('#head_path')!;
+        let site = false;
+        let changed = false;
+
+        // Loading content based on document
+        if (d.document) {
+            dom_chat.innerHTML = '';
+            let doms = render_chat(d.document);
+            for (const dom of doms) dom_chat.appendChild(dom);
+            changed = true;
+        }
+        // Loading content based on page
+        if (d.page && d.page.length) {
+            // Variables
+            let is_scrapper = d.page[0] in scraper;
+            // Loading
+            if (is_scrapper) {
+                let datas = await scraper[d.page[0]].get(d.page.slice(1), d);
+                let n = 1;
+                parent_data(datas, d.parent);
+                for (const data of datas) {
+                    register_data(data);
+                    parent.splice(index+n++, 0, data);
+                }
+                parent.splice(index, 1); 
+                let doms = render_chat(datas);
+                // ERRORLOG: Uncaught (in promise) TypeError: Cannot read properties of null (reading 'insertBefore')
+                for (const dom of doms) dom_data.parentElement.insertBefore(dom, dom_data);
+                if (d.parse && d.parse&1 && doms.length) doms[doms.length-1].scrollIntoView();
+                dom_data.parentElement.removeChild(dom_data);
+                parent.slice(index, 1);
+                delete data_keys[id];
+                data_keys[id] = {};
+            } else if (d.page[0] == 'browser') {
+                let id:number|null = d.meta && d.meta.id != undefined ? d.meta.id as number : null;
+                if (d.meta == undefined) d.meta = {};
+                await resized();
+                d.meta.id = async_browser.open(id, browser_id, d.page[1]);
+                let url = d.page[1];
+                path.innerHTML = `<span class="back">${url.includes('://') ? url.slice(0,url.indexOf('://')+3):''}</span>${url.includes('://') ? url.slice(url.indexOf('://')+3):url}`;
+                site = true
+            }
+            changed = true;
+        }
+        
+        // Change was dectected, update elements
+        if (changed) {
+            dom_chat.style.display = site ? 'none' : 'flex';
+            dom_site.style.display = site ? 'block' : 'none';
+            path.style.display = site ? 'block' : 'none';
+            async_browser.wins[browser_id].show = site;
+            resized();
+        }
+    }
+    /** Focus on new tab */
+    async function tab_focus(d:data) {
+        if (data_focus != null) {
+            let p:data|undefined = data_focus;
+            while (p) {
+                p.render = 0;
+                p = p.parent;
+            }
+        }
+        if (data_focus != d || d.parent) {
+            if (data_focus == d && d.parent) d = d.parent;
+            let p:data|undefined = d, n:number = 0;
+            while (p) {
+                p.render = n == 0 ? 1 : 2;
+                n++;
+                p = p.parent;
+            }
+            data_focus = d;
+        } else data_focus = null;
+
+        render_tabs();
+        load_page(d.id!);
+        //update_loaders();
+    }
+    /** Updates all loaders, if visible then loads */
+    function update_loaders() {
+        Q<HTMLDivElement>('#chat div.loader:not(.loading)')(async d => {
+            if (!(await is_visible(d))) return;
+            d.classList.add('loading');
+            let id = d.getAttribute('data-id')
+            if (id) {
+                await load_page(Number(id));
+                //if (Object.keys(data_keys[Number(id)]).length==0) d.classList.remove('loading'); 
+            }
+        })
+    }
+    /** Resized event handler */
+    async function resized() {
+        let r = q('#site')?.getBoundingClientRect();
+        if (r == undefined) return;
+        async_browser.wins[browser_id].size = [
+            r.left,
+            r.top,
+            r.width,
+            r.height,
+        ];
+        //update_loaders();
+    }
+    /** Translate */
+    let chatgpt_id = -1;
+    async function translate() {
+        let content = '';
+        let ids:number[] = [];
+        let chat = q<HTMLDivElement>('#chat');
+        if (chat == null) return;
+        let n = 0;
+        q('#chat')!.classList.add('translating');
+        for (const c of chat.children) {
+            let id = Number(c.getAttribute('data-id')??'');
+            let data = data_keys[id];
+            if (data == undefined || data.name == undefined || data.data == undefined) continue;
+            ids.push(id);
+            let div = document.createElement('div');
+            div.innerHTML = data.data.replace(/<br>/g,' ');
+            content += `${data.name} #${n}: ${div.innerText}\n`;
+            n++;
+        }
+        chatgpt_id = chatgpt_id>-1 ? chatgpt_id : async_browser.open(null, scrape_id, 'https://chatgpt.com/');
+let prompt = `You are going to be given a discussion, you are to parse it as HTML recursively into tokens in such a way that you teach a learner that only knows "English" to that region.
+* The 'token' class represent a block of information, has two 'info' class in the top(representing the meaning/explaination) and the optional bottom(representing the pronounciation). In between them is the token content. The class 'sub' can be used with 'info' to allow the info to always render regardless if token is being focused
+* The 'token' class can have additional classes such has:
+  - 'word' - represents a word, adds horizontal margins to replicate a word
+  - 'fix' - represents a prefix or suffix part
+  - 'root' - used together with 'fix' to represent a part of the root that is modified when joined to the prefix/suffix
+  - 'noun' - represents a noun
+
+
+
+For example this discussion:
+John: Anung oras ka nagkadtu sini?
+Mary: Mapa-Amerika ang ma’estro sasunud nga bulan.
+
+
+This is parsed into
+[
+  \`<text class="token"><text class="info">What time did you went to the cinema?</text><text class="token word"><text class="info">What</text>An<text class="token fix root"><text class="info">Change "o" to "u"</text>u</text><text class="token fix"><text class="info">to link with noun</text>ng</text><text class="info sub">\'a.nʊŋ</text></text> <text class="token word noun"><text class="info">time</text>oras<text class="info sub">\'ɔ.ras</text></text> <text class="token word"><text class="info">you</text>ka<text class="info sub">ka</text></text> <text class="token word verb"><text class="info">went</text><text class="token fix"><text class="info">indicates completed action</text>nag<text class="info">past tense</text></text>kadtu<text class="info sub">nag\'kad.tu</text></text> <text class="token word"><text class="info">to</text>sa<text class="info sub">sa</text></text> <text class="token noun"><text class="info">cinema</text>sini<text class="info sub">\'si.ni</text></text>?</text>\`,
+  \`<text class="token"><text class="info">The teacher will go to America next month</text><text class="token word noun"><text class="info">Will go to America</text><text class="token fix"><text class="info">future tense or intention</text>Mapa-</text>Amerika<text class="info sub">\'ma.pa.a\'me.ɾi.ka</text></text> <text class="token word"><text class="info">marks the subject of the sentence</text>ang<text class="info sub">aŋ</text></text> <text class="token word"><text class="info">teacher</text><text class="token fix"><text class="info">person with a profession</text>ma\'</text>estro<text class="info sub">ma\'ɛs.tɾo</text></text> <text class="token word"><text class="info">next</text><text class="token fix"><text class="info">future tense</text>sa</text>sunud<text class="info sub">sa\'su.nud</text></text> <text class="token word"><text class="info">linker to noun</text>nga<text class="info sub">ŋa</text></text> <text class="token word"><text class="info">month</text>bulan<text class="info sub">\'bu.lan</text></text></text>\`,
+]
+
+Parse this:
+
+${content}
+`;
+        let pass = {prompt:prompt};
+        await (async_browser.wait<boolean>(chatgpt_id, '#prompt-textarea', doms => {
+            doms[0].innerText = pass.prompt;
+            return true;
+        },pass))
+        await (async_browser.wait<boolean>(chatgpt_id, '[aria-label="Send prompt"]', doms => {
+            doms[0].click();
+            return true;
+        }));
+        await (async_browser.wait<boolean>(chatgpt_id, '[aria-label="Stop streaming"]'));
+        await (async_browser.wait<boolean>(chatgpt_id, '[aria-label="Start voice mode"]'));
+        let data:string[] = await (async_browser.wait<string[]>(chatgpt_id, 'code.hljs.language-html', doms => {
+            return doms[0].innerText.split('\n\n');
+        }));
+
+        console.log('REWRITING');
+
+        n = 0;
+        for (const d of data) {
+            let e = document.querySelector(`[data-id="${ids[n]}"]>.body`);
+            if (e) e.innerHTML = d;
+            n++;
+        }
+
+        q('#chat')!.classList.remove('translating');
+        console.log(content,chatgpt_id,data);
+    }
+
+    /* ----- Setup ----- */
+    render_tabs();
+
+    /* ----- Event listeners ----- */
+    q('#head_translate')?.addEventListener('click', translate);
+    window.addEventListener('resize', resized);
+    window.addEventListener('keyup',async e=>{ // TODO! Remove this, only for debugging
+        let debug_id = async_browser.wins[scrape_id].focus;
+        if (debug_id == -1) return;
+        if (e.key == 'q') console.log(profile.data, data_keys);
+        else if (e.key == 'w') async_browser.tabs[debug_id].view.webContents.openDevTools();
+        else if (e.key == 'a') {
+            q<HTMLElement>('#chat')!.style.display = 'none';
+            q<HTMLElement>('#site')!.style.display = 'block';
+            resized();
+            async_browser.open(debug_id, browser_id);
+        } else if (e.key == 's') {
+            q<HTMLElement>('#chat')!.style.display = 'flex';
+            q<HTMLElement>('#site')!.style.display = 'none';
+            resized();
+            async_browser.wins[browser_id].show = false;
+            async_browser.open(debug_id, scrape_id);
+        }
+    });
+    setInterval(update_loaders, 10);
+}
+
+/* ----- BACKEND ----- */
 let browser = new Browser({
     size: [800,800],
     html: /*html*/`<html>
@@ -549,20 +1061,22 @@ let browser = new Browser({
             <div id="tabs">
             </div>
             <div id="head">
-                <button>
+                <button id="head_close">
                     <span>&#xf00d;</span>
                     <text>Close</text>
                 </button>
-                <div contenteditable="true">
-                    <span class="back">https://</span>facebook.com
-                </div>
-                <button>
+                <div id="head_path" contenteditable="true"></div>
+                <button id="head_upload">
                     <span>&#xf0ee;</span>
                     <text>Upload</text>
                 </button>
-                <button>
+                <button id="head_send">
                     <span>&#xe20a;</span>
                     <text>Send</text>
+                </button>
+                <button id="head_translate">
+                    <span>&#xf1ab;</span>
+                    <text>Translate</text>
                 </button>
             </div>
             <div id="site">

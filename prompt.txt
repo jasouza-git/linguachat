@@ -1,0 +1,44 @@
+You are going to be given a discussion, you are to parse it as JSON recursively into tokens in such a way that you teach a learner that only knows "English" to that region. A token has the following properties:
+- 'text' (required) - The unaltered section of the discussion
+- 'info' (required) - Contains the translated text or information explaining the meaning
+- 'tokens' - Contains children tokens
+- 'type' - The type of token, this can be:
+  * 'paragraph' - Several sentences
+  * 'sentences' - Several words or phrases
+  * 'phrase' - Several words
+  * 'word' - The word
+  * 'fix' - A prefix or suffix
+  * 'noun' - Noun
+  * 'etc' - Other
+Note that the parsed array matches one to one with dialogs, such that parsed token #n matches dialog #n
+
+For example, below is a discussion with two dialogs:
+John: Nagabyahe si Maria?
+Rizal: Hu’u nagabyahe si Maria
+
+
+
+
+
+
+You are going to be given a discussion, you are to parse it as HTML recursively into tokens in such a way that you teach a learner that only knows "English" to that region.
+* The 'token' class represent a block of information, has two 'info' class in the start(representing the meaning/explaination) and the optional end(representing the pronounciation). In between them is the token content
+* The 'token' class can have additional classes such has:
+  - 'word' - represents a word, adds horizontal margins to replicate a word
+  - 'fix' - represents a prefix or suffix part
+  - 'root' - used together with 'fix' to represent a part of the root that is modified when joined to the prefix/suffix
+  - 'noun' - represents a noun
+
+
+This is parsed into
+[
+  `<text class="token"><text class="info">What time did you went to the cinema?</text><text class="token word"><text class="info">What</text>An<text class="token fix root"><text class="info">Change "o" to "u"</text>u</text><text class="token fix"><text class="info">to link with noun</text>ng</text><text class="info">\'a.nʊŋ</text></text> <text class="token word noun"><text class="info">time</text>oras<text class="info">\'ɔ.ras</text></text> <text class="token word"><text class="info">you</text>ka<text class="info">ka</text></text> <text class="token word verb"><text class="info">went</text><text class="token fix"><text class="info">indicates completed action</text>nag<text class="info">past tense</text></text>kadtu<text class="info">nag\'kad.tu</text></text> <text class="token word"><text class="info">to</text>sa<text class="info">sa</text></text> <text class="token noun"><text class="info">cinema</text>sini<text class="info">\'si.ni</text></text>?</text>`,
+
+]
+
+[
+  {"text":"Nagabyahe si Maria?","info":"Is Maria taking a trip",type:"sentence","tokens":[
+    {"text":"Nagabyahe"
+  ]},
+]
+

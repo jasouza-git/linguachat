@@ -3,12 +3,14 @@ start "" /b tsc src/index.ts --outDir out --watch --target ES2017 --module noden
 start "" /b npx sass src/style.sass out/style.css --watch
 
 :loop
+echo Press any key to clear
+pause >nul
 cls
-echo Waiting for a key press...
-pause >nul
+rem echo Waiting for a key press...
+rem pause >nul
 
-start "" /b npx electron . >nul
-pause >nul
+rem start "" /b npx electron . >nul
+rem pause >nul
 
-taskkill /f /im electron.exe >nul 2>&1
+rem taskkill /f /im electron.exe >nul 2>&1
 goto loop

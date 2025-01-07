@@ -228,11 +228,11 @@ class Browser {
         }
     }
     /* ----- AUTOMATION ----- */
-    async exec(tab, func) {
-        if (this.tabs[tab] == undefined)
-            return undefined;
+    async exec(tab, func, pass) {
+        //if (this.tabs[tab] == undefined) return undefined;
         let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
             new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
                 let func = (
                     ${func.toString()}
                 );
@@ -244,8 +244,34 @@ class Browser {
     }
     async wait(tab, query, func, pass) {
         let wait = 100;
-        if (this.tabs[tab] == undefined)
+        if (this.tabs[tab] == undefined && func)
             return func([], true);
+        let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
+            new Promise((res,rej)=>{
+                let pass = ${JSON.stringify(pass)};
+                ${func ? `let func = (
+                    ${func.toString()}
+                )` : ''}
+                const start = Date.now();
+                const check = () => {
+                    const ele = Array.from(document.querySelectorAll('${query}'));
+                    if (ele.length != 0) {
+                        ${func ? `
+                            let out = func(ele, false);
+                            if (out !== undefined) res(out);
+                        ` : 'res()'}
+                    } else setTimeout(check, ${wait});
+                };
+                check();
+            });
+        `);
+        console.log('OUT', out);
+        return out;
+    }
+    async wait_each(tab, query, func, pass) {
+        let wait = 100;
+        if (this.tabs[tab] == undefined)
+            return [];
         let out = await this.tabs[tab].view.webContents.executeJavaScript(/*js*/ `
             new Promise((res,rej)=>{
                 let pass = ${JSON.stringify(pass)};
@@ -255,17 +281,25 @@ class Browser {
                 const start = Date.now();
                 const check = () => {
                     const ele = Array.from(document.querySelectorAll('${query}'));
-                    //if (pass.parse) ele = pass.parse(ele);
-                    if (ele.length != 0) {
-                        let out = func(ele, false);
-                        if (out !== undefined) res(out);
-                    } else setTimeout(check, ${wait});
+                    if (ele.length != 0) res(ele.map(func).filter(x=>x!==undefined));
+                    else setTimeout(check, ${wait});
                 };
                 check();
             });
         `);
-        console.log('OUT', out);
         return out;
+    }
+    async ensure_url(tab, url) {
+        let cont = this.tabs[tab].view.webContents;
+        let old_url = cont.getURL();
+        if (old_url == url)
+            return true;
+        cont.loadURL(url);
+        await new Promise(res => {
+            cont.once('did-finish-load', () => res());
+            cont.once('did-fail-load', () => res());
+        });
+        return false;
     }
     /* ----- CONSTRUCTOR ----- */
     constructor(data = null) {
